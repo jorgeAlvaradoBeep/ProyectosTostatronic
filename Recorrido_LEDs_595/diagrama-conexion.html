@@ -1,0 +1,443 @@
+<title>Cableado ESP32 + 74HC595</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --paper:   #F2F4F1;
+    --surface: #FFFFFF;
+    --ink:     #14181B;
+    --ink-2:   #59646C;
+    --line:    #D6DBD6;
+    --v33:     #C5391F;
+    --gnd:     #6B7780;
+    --ser:     #2668BE;
+    --srclk:   #0E7F63;
+    --rclk:    #B85C0A;
+    --led:     #D24A3F;
+    --warn-bg: #FBF0EC;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:   #0D1012;
+      --surface: #161B1E;
+      --ink:     #E9ECE9;
+      --ink-2:   #96A1A8;
+      --line:    #293035;
+      --v33:     #F2765E;
+      --gnd:     #94A1AB;
+      --ser:     #6FA8E8;
+      --srclk:   #3CC29C;
+      --rclk:    #E89845;
+      --led:     #F27C70;
+      --warn-bg: #221613;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:   #0D1012;
+    --surface: #161B1E;
+    --ink:     #E9ECE9;
+    --ink-2:   #96A1A8;
+    --line:    #293035;
+    --v33:     #F2765E;
+    --gnd:     #94A1AB;
+    --ser:     #6FA8E8;
+    --srclk:   #3CC29C;
+    --rclk:    #E89845;
+    --led:     #F27C70;
+    --warn-bg: #221613;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    padding-inline: 20px;
+    padding-block: 40px 64px;
+  }
+  .wrap { max-width: 900px; margin-inline: auto; display: flex; flex-direction: column; gap: 40px; }
+
+  header { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  h1 {
+    font-size: clamp(26px, 5vw, 38px); line-height: 1.12; margin: 0;
+    font-weight: 600; letter-spacing: -.02em; text-wrap: balance;
+  }
+  .lede { margin: 0; color: var(--ink-2); max-width: 62ch; }
+
+  h2 {
+    font-size: 19px; font-weight: 600; margin: 0 0 4px; letter-spacing: -.01em;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  h2 .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--ink-2); font-weight: 500;
+  }
+  section { display: flex; flex-direction: column; gap: 14px; }
+  p { margin: 0; max-width: 66ch; }
+
+  figure {
+    margin: 0; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 18px 16px 14px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .scroller { overflow-x: auto; }
+  figure svg { display: block; width: 100%; min-width: 620px; height: auto; }
+  figcaption {
+    font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+    border-top: 1px solid var(--line); padding-top: 10px;
+  }
+
+  svg text { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .lbl  { font-size: 12px; fill: var(--ink); }
+  .lbl2 { font-size: 11px; fill: var(--ink-2); }
+  .wire-lbl { font-size: 11px; font-weight: 500; }
+  .chip { font-size: 12.5px; fill: var(--ink); font-weight: 600; }
+  .w { fill: none; stroke-width: 2; stroke-linecap: square; stroke-linejoin: miter; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 0; list-style: none; }
+  .legend li {
+    display: flex; align-items: center; gap: 8px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
+  }
+  .legend i { width: 22px; height: 3px; border-radius: 1px; flex: none; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); }
+  th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-2); font-weight: 500;
+  }
+  td.pin { font-family: "IBM Plex Mono", ui-monospace, monospace; white-space: nowrap; }
+  .tbl-wrap { overflow-x: auto; }
+
+  .alert {
+    background: var(--warn-bg); border-left: 3px solid var(--v33);
+    padding: 14px 16px; border-radius: 0 3px 3px 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .alert strong { color: var(--v33); }
+  .alert p { max-width: none; font-size: 14px; }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .9em; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1px 5px;
+  }
+  footer {
+    font-size: 12px; color: var(--ink-2); border-top: 1px solid var(--line);
+    padding-top: 16px; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Tostatronic · Proyecto 01</div>
+    <h1>Cableado ESP32 + 74HC595</h1>
+    <p class="lede">Ocho LEDs controlados con tres GPIO. El registro se alimenta a 3.3&nbsp;V y los LEDs van en modo sumidero — las dos decisiones que hacen que el circuito sea confiable y no nada más que "a veces jala".</p>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span> Esquemático de conexión</h2>
+    <figure>
+      <div class="scroller">
+        <svg viewBox="0 0 860 510" role="img" aria-label="Esquemático: el ESP32 alimenta el 74HC595 con 3.3 voltios y le manda SER por GPIO 23, SRCLK por GPIO 18 y RCLK por GPIO 5. Las ocho salidas QA a QH van cada una por una resistencia de 220 ohm al cátodo de un LED, cuyos ánodos se unen al riel de 3.3 voltios.">
+
+          <!-- ================= riel 3.3 V ================= -->
+          <path class="w" stroke="var(--v33)" d="M 200 190 H 255 V 80 H 790 V 401"/>
+          <path class="w" stroke="var(--v33)" d="M 310 80 V 135 H 400"/>
+          <path class="w" stroke="var(--v33)" d="M 352 80 V 165 H 400"/>
+          <circle cx="310" cy="80" r="3.5" fill="var(--v33)"/>
+          <circle cx="352" cy="80" r="3.5" fill="var(--v33)"/>
+          <text x="268" y="72" class="wire-lbl" fill="var(--v33)">3.3 V</text>
+
+          <!-- ================= GND ================= -->
+          <path class="w" stroke="var(--gnd)" d="M 200 330 H 270 V 460 H 380 V 405 H 400"/>
+          <path class="w" stroke="var(--gnd)" d="M 350 460 V 370 H 400"/>
+          <circle cx="350" cy="460" r="3.5" fill="var(--gnd)"/>
+          <text x="290" y="452" class="wire-lbl" fill="var(--gnd)">GND</text>
+
+          <!-- ================= señales ================= -->
+          <path class="w" stroke="var(--ser)"   d="M 200 225 H 400"/>
+          <path class="w" stroke="var(--srclk)" d="M 200 260 H 400"/>
+          <path class="w" stroke="var(--rclk)"  d="M 200 295 H 400"/>
+          <text x="300" y="217" class="wire-lbl" fill="var(--ser)"   text-anchor="middle">SER</text>
+          <text x="300" y="252" class="wire-lbl" fill="var(--srclk)" text-anchor="middle">SRCLK</text>
+          <text x="300" y="287" class="wire-lbl" fill="var(--rclk)"  text-anchor="middle">RCLK</text>
+
+          <!-- ================= ESP32 ================= -->
+          <rect x="50" y="110" width="150" height="290" rx="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="125" y="142" class="chip" text-anchor="middle">ESP32</text>
+          <text x="125" y="160" class="lbl2" text-anchor="middle">clásico / S3</text>
+          <text x="192" y="194" class="lbl" text-anchor="end">3V3</text>
+          <text x="192" y="229" class="lbl" text-anchor="end">23 / 11</text>
+          <text x="192" y="264" class="lbl" text-anchor="end">18 / 12</text>
+          <text x="192" y="299" class="lbl" text-anchor="end">5 / 10</text>
+          <text x="192" y="334" class="lbl" text-anchor="end">GND</text>
+
+          <!-- ================= 74HC595 ================= -->
+          <rect x="400" y="105" width="180" height="335" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="490" y="252" class="chip" text-anchor="middle">74HC595</text>
+          <text x="490" y="270" class="lbl2" text-anchor="middle">VCC 3.3 V</text>
+
+          <text x="408" y="139" class="lbl">16 VCC</text>
+          <text x="408" y="169" class="lbl">10 SRCLR</text>
+          <text x="408" y="229" class="lbl">14 SER</text>
+          <text x="408" y="264" class="lbl">11 SRCLK</text>
+          <text x="408" y="299" class="lbl">12 RCLK</text>
+          <text x="408" y="374" class="lbl">13 OE</text>
+          <text x="408" y="409" class="lbl">8 GND</text>
+
+          <text x="572" y="139" class="lbl" text-anchor="end">QA 15</text>
+          <text x="572" y="177" class="lbl" text-anchor="end">QB 1</text>
+          <text x="572" y="215" class="lbl" text-anchor="end">QC 2</text>
+          <text x="572" y="253" class="lbl" text-anchor="end">QD 3</text>
+          <text x="572" y="291" class="lbl" text-anchor="end">QE 4</text>
+          <text x="572" y="329" class="lbl" text-anchor="end">QF 5</text>
+          <text x="572" y="367" class="lbl" text-anchor="end">QG 6</text>
+          <text x="572" y="405" class="lbl" text-anchor="end">QH 7</text>
+
+          <!-- ================= LEDs + resistencias ================= -->
+          <!-- fila 1 -->
+          <path class="w" stroke="var(--led)" d="M 580 135 H 612 M 652 135 H 690 M 712 135 H 790"/>
+          <rect x="612" y="128" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,124 712,146 690,135" fill="var(--led)"/>
+          <line x1="690" y1="122" x2="690" y2="148" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="135" r="3.5" fill="var(--v33)"/>
+          <!-- fila 2 -->
+          <path class="w" stroke="var(--led)" d="M 580 173 H 612 M 652 173 H 690 M 712 173 H 790"/>
+          <rect x="612" y="166" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,162 712,184 690,173" fill="var(--led)"/>
+          <line x1="690" y1="160" x2="690" y2="186" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="173" r="3.5" fill="var(--v33)"/>
+          <!-- fila 3 -->
+          <path class="w" stroke="var(--led)" d="M 580 211 H 612 M 652 211 H 690 M 712 211 H 790"/>
+          <rect x="612" y="204" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,200 712,222 690,211" fill="var(--led)"/>
+          <line x1="690" y1="198" x2="690" y2="224" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="211" r="3.5" fill="var(--v33)"/>
+          <!-- fila 4 -->
+          <path class="w" stroke="var(--led)" d="M 580 249 H 612 M 652 249 H 690 M 712 249 H 790"/>
+          <rect x="612" y="242" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,238 712,260 690,249" fill="var(--led)"/>
+          <line x1="690" y1="236" x2="690" y2="262" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="249" r="3.5" fill="var(--v33)"/>
+          <!-- fila 5 -->
+          <path class="w" stroke="var(--led)" d="M 580 287 H 612 M 652 287 H 690 M 712 287 H 790"/>
+          <rect x="612" y="280" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,276 712,298 690,287" fill="var(--led)"/>
+          <line x1="690" y1="274" x2="690" y2="300" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="287" r="3.5" fill="var(--v33)"/>
+          <!-- fila 6 -->
+          <path class="w" stroke="var(--led)" d="M 580 325 H 612 M 652 325 H 690 M 712 325 H 790"/>
+          <rect x="612" y="318" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,314 712,336 690,325" fill="var(--led)"/>
+          <line x1="690" y1="312" x2="690" y2="338" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="325" r="3.5" fill="var(--v33)"/>
+          <!-- fila 7 -->
+          <path class="w" stroke="var(--led)" d="M 580 363 H 612 M 652 363 H 690 M 712 363 H 790"/>
+          <rect x="612" y="356" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,352 712,374 690,363" fill="var(--led)"/>
+          <line x1="690" y1="350" x2="690" y2="376" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="363" r="3.5" fill="var(--v33)"/>
+          <!-- fila 8 -->
+          <path class="w" stroke="var(--led)" d="M 580 401 H 612 M 652 401 H 690 M 712 401 H 790"/>
+          <rect x="612" y="394" width="40" height="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <polygon points="712,390 712,412 690,401" fill="var(--led)"/>
+          <line x1="690" y1="388" x2="690" y2="414" stroke="var(--led)" stroke-width="2.5"/>
+          <circle cx="790" cy="401" r="3.5" fill="var(--v33)"/>
+
+          <text x="632" y="118" class="lbl2" text-anchor="middle">220 Ω ×8</text>
+          <text x="812" y="240" class="lbl2" text-anchor="middle" transform="rotate(90 812 240)">ánodos comunes · 3.3 V</text>
+
+          <!-- ================= callout capacitor ================= -->
+          <path d="M 490 440 V 470" stroke="var(--ink-2)" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+          <text x="490" y="488" class="lbl2" text-anchor="middle">+ capacitor 0.1 µF entre pin 16 y pin 8</text>
+        </svg>
+      </div>
+      <figcaption>Los GPIO del ESP32 aparecen como <strong>clásico / S3</strong>: el primer número es del ESP32 original, el segundo del ESP32-S3. OE va a GND para dejar las salidas siempre habilitadas y SRCLR a 3.3 V para nunca borrar el registro. Cada LED tiene el ánodo en el riel de 3.3 V y el cátodo hacia su salida Qx: enciende cuando la salida va en <em>bajo</em>.</figcaption>
+    </figure>
+
+    <ul class="legend">
+      <li><i style="background: var(--v33)"></i> 3.3 V</li>
+      <li><i style="background: var(--gnd)"></i> GND</li>
+      <li><i style="background: var(--ser)"></i> SER — datos</li>
+      <li><i style="background: var(--srclk)"></i> SRCLK — reloj</li>
+      <li><i style="background: var(--rclk)"></i> RCLK — latch</li>
+      <li><i style="background: var(--led)"></i> salidas Qx</li>
+    </ul>
+  </section>
+
+  <section>
+    <div class="alert">
+      <p><strong>El 74HC595 va a 3.3 V, no a 5 V.</strong></p>
+      <p>A 5 V el chip exige <code>VIH = 0.7 × VCC = 3.5 V</code> para leer un "1", y el ESP32 solo entrega 3.3 V. El circuito queda fuera de especificación: arranca en la mesa y luego mete bits basura o falla al calentar. Alimentándolo con 3.3 V el <code>VIH</code> baja a 2.31 V y desaparece el conflicto — el HC595 trabaja de 2 a 6 V sin problema.</p>
+      <p>Si necesitas 5 V en el registro, usa <strong>74HCT595</strong> o <strong>74LS595</strong>: sus entradas son TTL con <code>VIH = 2.0 V</code> y sí aceptan 3.3 V. Nunca 74HC595 a 5 V manejado directo desde el ESP32.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span> Pinout físico del chip</h2>
+    <p>El esquemático de arriba acomoda los pines por función. Este es el chip como lo vas a ver en el protoboard, con la muesca hacia arriba.</p>
+    <figure>
+      <div class="scroller">
+        <svg viewBox="0 0 720 370" role="img" aria-label="Vista superior del 74HC595 en encapsulado DIP-16. Con la muesca arriba, los pines 1 al 8 bajan por el lado izquierdo (QB, QC, QD, QE, QF, QG, QH, GND) y del 9 al 16 suben por el derecho (QH prima, SRCLR, SRCLK, RCLK, OE, SER, QA, VCC). Un capacitor de 0.1 microfaradios une el pin 16 con el pin 8.">
+
+          <!-- capacitor de desacoplo -->
+          <path class="w" stroke="var(--ink-2)" d="M 550 90 V 32 H 170 V 168"/>
+          <path class="w" stroke="var(--ink-2)" d="M 170 182 V 300 H 270"/>
+          <line x1="148" y1="168" x2="192" y2="168" stroke="var(--ink-2)" stroke-width="2.5"/>
+          <line x1="148" y1="182" x2="192" y2="182" stroke="var(--ink-2)" stroke-width="2.5"/>
+          <text x="140" y="171" class="lbl2" text-anchor="end">0.1 µF</text>
+          <text x="140" y="187" class="lbl2" text-anchor="end">cerámico</text>
+
+          <!-- patitas -->
+          <line x1="270" y1="90"  x2="300" y2="90"  stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="120" x2="300" y2="120" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="150" x2="300" y2="150" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="180" x2="300" y2="180" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="210" x2="300" y2="210" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="240" x2="300" y2="240" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="270" x2="300" y2="270" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="270" y1="300" x2="300" y2="300" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="90"  x2="550" y2="90"  stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="120" x2="550" y2="120" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="150" x2="550" y2="150" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="180" x2="550" y2="180" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="210" x2="550" y2="210" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="240" x2="550" y2="240" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="270" x2="550" y2="270" stroke="var(--ink)" stroke-width="2"/>
+          <line x1="520" y1="300" x2="550" y2="300" stroke="var(--ink)" stroke-width="2"/>
+
+          <!-- cuerpo -->
+          <rect x="300" y="60" width="220" height="270" rx="3" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <path d="M 396 60 A 14 14 0 0 0 424 60" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.5"/>
+          <circle cx="320" cy="80" r="4" fill="var(--ink-2)"/>
+          <text x="410" y="190" class="chip" text-anchor="middle">74HC595</text>
+          <text x="410" y="208" class="lbl2" text-anchor="middle">vista superior</text>
+
+          <text x="260" y="94"  class="lbl" text-anchor="end">1 &nbsp;QB</text>
+          <text x="260" y="124" class="lbl" text-anchor="end">2 &nbsp;QC</text>
+          <text x="260" y="154" class="lbl" text-anchor="end">3 &nbsp;QD</text>
+          <text x="260" y="184" class="lbl" text-anchor="end">4 &nbsp;QE</text>
+          <text x="260" y="214" class="lbl" text-anchor="end">5 &nbsp;QF</text>
+          <text x="260" y="244" class="lbl" text-anchor="end">6 &nbsp;QG</text>
+          <text x="260" y="274" class="lbl" text-anchor="end">7 &nbsp;QH</text>
+          <text x="260" y="304" class="lbl" text-anchor="end">8 &nbsp;GND</text>
+
+          <text x="560" y="94"  class="lbl">16 VCC</text>
+          <text x="560" y="124" class="lbl">15 QA</text>
+          <text x="560" y="154" class="lbl">14 SER</text>
+          <text x="560" y="184" class="lbl">13 OE</text>
+          <text x="560" y="214" class="lbl">12 RCLK</text>
+          <text x="560" y="244" class="lbl">11 SRCLK</text>
+          <text x="560" y="274" class="lbl">10 SRCLR</text>
+          <text x="560" y="304" class="lbl">9 &nbsp;QH′</text>
+
+          <text x="320" y="348" class="lbl2" text-anchor="middle">pin 1</text>
+        </svg>
+      </div>
+      <figcaption>Fíjate que <strong>QA es el pin 15</strong>, del lado derecho, y no el 1 — es el error de cableado más común con este chip. El capacitor cerámico de 0.1 µF va lo más pegado posible al encapsulado: sin él aparecen glitches en el latch y vas a ver LEDs parpadeando donde no deben.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span> Tabla de conexiones</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>ESP32 clásico</th><th>ESP32-S3</th><th>74HC595</th><th>Señal</th><th>Para qué</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="pin">GPIO 23</td><td class="pin">GPIO 11</td><td class="pin">14 — SER</td><td>datos</td><td>El bit que entra al registro</td></tr>
+          <tr><td class="pin">GPIO 18</td><td class="pin">GPIO 12</td><td class="pin">11 — SRCLK</td><td>reloj</td><td>Cada flanco recorre los bits una posición</td></tr>
+          <tr><td class="pin">GPIO 5</td><td class="pin">GPIO 10</td><td class="pin">12 — RCLK</td><td>latch</td><td>Vuelca el registro a las salidas, de golpe</td></tr>
+          <tr><td class="pin">3V3</td><td class="pin">3V3</td><td class="pin">16 — VCC</td><td>+3.3 V</td><td>Alimentación del chip</td></tr>
+          <tr><td class="pin">3V3</td><td class="pin">3V3</td><td class="pin">10 — SRCLR</td><td>+3.3 V</td><td>Activo en bajo: amarrado arriba nunca borra</td></tr>
+          <tr><td class="pin">GND</td><td class="pin">GND</td><td class="pin">13 — OE</td><td>0 V</td><td>Activo en bajo: salidas siempre habilitadas</td></tr>
+          <tr><td class="pin">GND</td><td class="pin">GND</td><td class="pin">8 — GND</td><td>0 V</td><td>Tierra común</td></tr>
+          <tr><td class="pin">—</td><td class="pin">—</td><td class="pin">15, 1–7 — QA…QH</td><td>salidas</td><td>Cada una a su R de 220 Ω y su LED</td></tr>
+          <tr><td class="pin">—</td><td class="pin">—</td><td class="pin">9 — QH′</td><td>cascada</td><td>Al SER del siguiente 595</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Ninguna de las dos ternas es arbitraria: son <strong>MOSI, SCK y SS</strong> del bus SPI por hardware — VSPI en el ESP32 clásico, SPI2/FSPI en el S3. Funcionan igual con <code>shiftOut()</code>, pero el día que quieras velocidad, migrar a SPI nativo es cambiar únicamente la función <code>escribir()</code>.</p>
+
+    <div class="alert">
+      <p><strong>El ESP32-S3 no tiene GPIO 23.</strong></p>
+      <p>El S3 tiene un hueco en la numeración: existen <code>GPIO 0–21</code> y <code>GPIO 26–48</code>, pero <strong>22, 23, 24 y 25 no existen</strong>. Un <code>pinMode(23, OUTPUT)</code> en S3 no hace nada y el registro nunca recibe datos — el circuito se ve bien cableado y no pasa absolutamente nada.</p>
+      <p>Por eso hay un sketch para cada placa: <code>ESP32_Recorrido_LEDs_595</code> para el clásico y <code>ESP32S3_Recorrido_LEDs_595</code> para el S3. Cada uno verifica la placa al compilar y marca un <code>#error</code> si elegiste la equivocada. Si mueves los pines en el S3, evita <code>0, 3, 45, 46</code> (strapping), <code>19 y 20</code> (USB nativo), <code>26–32</code> (flash y PSRAM internos) y, en módulos con memoria octal (N8R8, N16R8), también <code>33–37</code>.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span> Cascada: de 8 a 16 LEDs</h2>
+    <figure>
+      <div class="scroller">
+        <svg viewBox="0 0 860 350" role="img" aria-label="Dos 74HC595 en cascada: el ESP32 manda SER al primero, la salida QH prima del pin 9 del primero entra al SER del pin 14 del segundo, y SRCLK y RCLK se comparten entre ambos chips. El primero maneja los LEDs 1 al 8 y el segundo los LEDs 9 al 16.">
+          <defs>
+            <marker id="ah-ser" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ser)"/>
+            </marker>
+            <marker id="ah-bus" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--srclk)"/>
+            </marker>
+          </defs>
+
+          <!-- bus compartido -->
+          <path class="w" stroke="var(--srclk)" d="M 85 200 V 285 H 600"/>
+          <path class="w" stroke="var(--srclk)" d="M 320 285 V 226" marker-end="url(#ah-bus)"/>
+          <path class="w" stroke="var(--srclk)" d="M 600 285 V 226" marker-end="url(#ah-bus)"/>
+          <circle cx="320" cy="285" r="3.5" fill="var(--srclk)"/>
+          <text x="345" y="308" class="wire-lbl" fill="var(--srclk)">SRCLK + RCLK — compartidos entre los dos chips</text>
+
+          <!-- SER del ESP32 -->
+          <path class="w" stroke="var(--ser)" d="M 140 120 H 234" marker-end="url(#ah-ser)"/>
+          <text x="187" y="110" class="wire-lbl" fill="var(--ser)" text-anchor="middle">SER</text>
+
+          <!-- QH' -> SER -->
+          <path class="w" stroke="var(--ser)" d="M 400 120 H 514" marker-end="url(#ah-ser)"/>
+          <text x="460" y="110" class="wire-lbl" fill="var(--ser)" text-anchor="middle">el bit que se desborda</text>
+          <text x="408" y="144" class="lbl2">pin 9 QH′</text>
+          <text x="512" y="144" class="lbl2" text-anchor="end">pin 14 SER</text>
+
+          <!-- bloques -->
+          <rect x="30" y="90" width="110" height="110" rx="7" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="85" y="140" class="chip" text-anchor="middle">ESP32</text>
+          <text x="85" y="158" class="lbl2" text-anchor="middle">3 GPIO</text>
+
+          <rect x="240" y="70" width="160" height="155" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="320" y="180" class="chip" text-anchor="middle">74HC595 #1</text>
+          <text x="320" y="200" class="lbl2" text-anchor="middle">LEDs 1–8</text>
+
+          <rect x="520" y="70" width="160" height="155" rx="4" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="600" y="180" class="chip" text-anchor="middle">74HC595 #2</text>
+          <text x="600" y="200" class="lbl2" text-anchor="middle">LEDs 9–16</text>
+
+          <text x="710" y="126" class="lbl2">y sigue: #3, #4…</text>
+          <text x="710" y="146" class="lbl2">siempre 3 GPIO</text>
+        </svg>
+      </div>
+      <figcaption>Conecta el pin 9 (QH′) del primer chip al pin 14 (SER) del segundo, comparte SRCLK y RCLK entre ambos, y cambia <code>NUM_REGISTROS</code> a <code>2</code> en el sketch. Los patrones se recalculan solos. Siguen siendo los mismos tres GPIO del ESP32 — ese es todo el punto del chip.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span> Por qué 220 Ω</h2>
+    <p>Con el registro a 3.3 V, un LED rojo de <code>Vf ≈ 2.0 V</code> y la caída de la salida en bajo <code>VOL ≈ 0.3 V</code>:</p>
+    <p><code>(3.3 − 2.0 − 0.3) / 0.005 A = 200 Ω</code> → la comercial más cercana es <strong>220 Ω</strong>, que deja ~4.5 mA por LED.</p>
+    <p>Ocho LEDs son 36 mA en total, muy por debajo de lo que aguanta el chip. Si usas LEDs azules o blancos su <code>Vf</code> sube a ~3.0 V y a 3.3 V casi no queda margen: ahí sí conviene el 74HCT595 a 5 V.</p>
+  </section>
+
+  <footer>Tostatronic · tostatronic.com · Proyecto Recorrido_LEDs_595</footer>
+
+</div>
