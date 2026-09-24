@@ -171,7 +171,10 @@ ESP32_WROVER_CAM/
 │   ├── ESP32_WROVER_CAM_Portal.ino
 │   └── paginas.h              ← las dos páginas web (HTML/CSS/JS embebido)
 ├── presentacion/              ← material de difusión (Instagram 1:1 y horizontal 16:9)
-└── docs/                      ← diagramas
+├── docs/                      ← diagramas
+├── tostabot/                  ← imágenes de referencia de Tostabot
+├── guion-video-tostabot.md    ← guion y prompts del video
+└── prompts-kling.txt          ← prompts de Kling listos para copiar
 ```
 
 ---

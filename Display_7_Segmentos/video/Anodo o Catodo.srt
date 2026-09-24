@@ -1,0 +1,72 @@
+1
+00:00:00,166 --> 00:00:02,366
+cátodo común o ánodo común
+
+2
+00:00:02,900 --> 00:00:05,066
+la duda número uno con estos displays
+
+3
+00:00:05,500 --> 00:00:09,000
+un display de 7 segmentos son 7 LEDs en forma de 8
+
+4
+00:00:09,566 --> 00:00:12,100
+muchos traen 1/8 el punto decimal
+
+5
+00:00:12,400 --> 00:00:15,800
+para ahorrar pines todos comparten una patita el común
+
+6
+00:00:16,533 --> 00:00:18,100
+si comparten el negativo es
+
+7
+00:00:18,333 --> 00:00:20,666
+catodo común el común va a tierra
+
+8
+00:00:20,900 --> 00:00:22,866
+y cada segmento prende con 1 1
+
+9
+00:00:23,600 --> 00:00:24,766
+si comparten el positivo
+
+10
+00:00:25,000 --> 00:00:29,166
+es anodo común el común va al voltaje y prende con 1 0
+
+11
+00:00:30,300 --> 00:00:32,200
+la lógica se invierte cuál tienes
+
+12
+00:00:32,800 --> 00:00:35,600
+multímetro en modo diodo punta roja al común
+
+13
+00:00:36,300 --> 00:00:40,100
+si prende un segmento es anodo común catodo común
+
+14
+00:00:40,166 --> 00:00:42,933
+se lleva perfecto con un microcontrolador o un Max
+
+15
+00:00:43,066 --> 00:00:47,400
+7 2 1 9 anodo común con drivers que absorben corriente
+
+16
+00:00:47,666 --> 00:00:51,000
+los ves en relojes básculas contadores y marcadores
+
+17
+00:00:51,766 --> 00:00:52,466
+eso sí
+
+18
+00:00:52,466 --> 00:00:55,366
+si lo conectas directo una resistencia por segmento
+
