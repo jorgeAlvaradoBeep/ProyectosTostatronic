@@ -1,42 +1,54 @@
 /*
  * ============================================================
- *  INTERFAZ EN LA PANTALLA REDONDA - implementacion
+ *  INTERFAZ - arranque, piezas comunes y cambio de vista
  *  Desarrollado por Tostatronic - Ing. Jorge Alvarado
  * ============================================================
  */
 
 #include "ui.h"
-#include "config.h"
-#include "pantalla.h"
+#include "ui_comun.h"
 #include "logo.h"
 
-namespace {
+namespace ui {
 
-/* Una zona de texto que recuerda lo ultimo que pinto: solo se vuelve a
- * mandar a la pantalla cuando el texto o el color cambian. Asi el SPI
- * queda libre casi todo el tiempo y nada parpadea. */
-struct Zona {
-  int16_t  cx, cy, ancho, alto;
-  Fuente   fuente;
-  char     texto[40];
-  uint16_t color;
-  bool     pintada;
-};
+// ------------------ zonas compartidas ------------------
 
-void pintar(Zona& z, const char* texto, uint16_t color = COLOR_TEXTO) {
-  if (z.pintada && z.color == color && strncmp(z.texto, texto, sizeof(z.texto)) == 0) return;
+Zona zTitulo = { 120,  50, 120, 26, F_TITULO };
+Zona zAviso  = { 120,  78, 170, 16, F_CHICA  };
+Zona zNumero = { 120, 114, 196, 52, F_NUMERO };
+Zona zUnidad = { 120, 152, 150, 18, F_TEXTO  };
+Zona zEstado = { 120, 174, 168, 16, F_CHICA  };
+Zona zPie    = { 120, 194, 132, 14, F_CHICA  };
+// Instrucciones a dos renglones (asistente de calibracion)
+Zona zLinea1 = { 120, 104, 190, 22, F_TEXTO  };
+Zona zLinea2 = { 120, 128, 190, 22, F_TEXTO  };
+Zona zDato   = { 120, 152, 170, 16, F_CHICA  };
+
+void pintar(Zona& z, const char* texto, uint16_t color, uint16_t fondo) {
+  if (z.pintada && z.color == color && z.fondo == fondo && strncmp(z.texto, texto, sizeof(z.texto)) == 0) return;
   strlcpy(z.texto, texto, sizeof(z.texto));
   z.color   = color;
+  z.fondo   = fondo;
   z.pintada = true;
-  pantalla::zonaTexto(z.cx, z.cy, z.ancho, z.alto, texto, z.fuente, color);
+  pantalla::zonaTexto(z.cx, z.cy, z.ancho, z.alto, texto, z.fuente, color, fondo);
 }
 
 void olvidar(Zona& z) { z.pintada = false; }
 
+void pintarNumero(Zona& z, const char* texto, uint16_t color) {
+  // La fuente del numero solo trae espacio, cifras, signo, punto y dos puntos.
+  bool soloCifras = true;
+  for (const char* p = texto; *p; p++) if ((uint8_t)*p < 0x20 || (uint8_t)*p > 0x3A) soloCifras = false;
+  Fuente f = soloCifras && pantalla::anchoTexto(texto, F_NUMERO) <= z.ancho ? F_NUMERO : F_TITULO;
+  if (f != z.fuente) { z.fuente = f; olvidar(z); }
+  pintar(z, texto, color);
+}
+
 // ------------------ anillo perimetral ------------------
 
-int16_t anilloPintado = -1;     // grados ya dibujados; -1 = hay que dibujar todo
-uint16_t anilloColor  = 0;
+int16_t  anilloPintado = -1;     // grados ya dibujados; -1 = hay que dibujar todo
+uint16_t anilloColor   = 0;
+int8_t   segmentoLista = -1;     // opcion resaltada en el anillo de la lista
 
 void anillo(float fraccion, uint16_t color) {
   int16_t grados = (int16_t)(constrain(fraccion, 0.0f, 1.0f) * 360.0f);
@@ -54,47 +66,99 @@ void anillo(float fraccion, uint16_t color) {
   anilloColor   = color;
 }
 
-// ------------------ prueba de hardware ------------------
-// Centros y tamanos verificados contra el circulo util (radio 106).
+// ------------------ avisos temporales ------------------
 
-Zona zTitulo = { 120,  50, 120, 26, F_TITULO };
-Zona zAviso  = { 120,  78, 170, 16, F_CHICA  };
-Zona zNumero = { 120, 112, 196, 52, F_NUMERO };
-Zona zUnidad = { 120, 150, 150, 18, F_TEXTO  };
-Zona zEstado = { 120, 172, 168, 16, F_CHICA  };
-
-const int16_t TECLAS_Y       = 194;
-const int16_t TECLAS_X[4]    = { 87, 109, 131, 153 };
-const int16_t TECLAS_RADIO   = 6;
-int8_t        teclasPintadas[4] = { -1, -1, -1, -1 };
-
-// Una celda de su capacidad nominal, con ganancia 128, anda por los 2
-// millones de cuentas: con eso el anillo se llena al cargarla completa.
-const float CUENTAS_ANILLO_LLENO = 2097152.0f;
-
-int32_t  ceroCrudo   = 0;
-uint8_t  nivelBrillo = TFT_BRILLO;
 uint32_t avisoHastaMs = 0;
 
-void aviso(const char* texto, uint16_t color = COLOR_AZUL) {
+void aviso(const char* texto, uint16_t color, uint16_t ms) {
   pintar(zAviso, texto, color);
-  avisoHastaMs = millis() + 1500;
+  avisoHastaMs = millis() + ms;
+  if (avisoHastaMs == 0) avisoHastaMs = 1;
 }
 
-const char* nombreTecla(Tecla t) {
-  switch (t) {
-    case TECLA_MENU:   return "MENÚ";
-    case TECLA_ARRIBA: return "ARRIBA";
-    case TECLA_ABAJO:  return "ABAJO";
-    default:           return "OK";
+bool avisoVigente() {
+  if (avisoHastaMs && (int32_t)(millis() - avisoHastaMs) >= 0) avisoHastaMs = 0;
+  return avisoHastaMs != 0;
+}
+
+void limpiarVista() {
+  pantalla::limpiar();
+  for (Zona* z : { &zTitulo, &zAviso, &zNumero, &zUnidad, &zEstado, &zPie, &zLinea1, &zLinea2, &zDato }) olvidar(*z);
+  zNumero.fuente = F_NUMERO;
+  anilloPintado  = -1;
+  segmentoLista  = -1;
+  avisoHastaMs   = 0;
+}
+
+// ------------------ lista vertical ------------------
+
+Zona zAnterior  = { 120,  84, 170, 22, F_TEXTO  };
+Zona zActual    = { 120, 120, 190, 32, F_TITULO };
+Zona zSiguiente = { 120, 156, 170, 22, F_TEXTO  };
+
+void lista(const char* const* opciones, uint8_t n, uint8_t sel) {
+  if (segmentoLista < 0) {
+    olvidar(zAnterior); olvidar(zActual); olvidar(zSiguiente);
+    pantalla::arco(ANILLO_EXT, ANILLO_INT, 0, 360, COLOR_BORDE);
+  }
+  // Circular: desde la primera, ARRIBA lleva a la ultima.
+  pintar(zAnterior,  n > 2 ? opciones[(sel + n - 1) % n] : "", COLOR_TENUE);
+  pintar(zActual,    opciones[sel], COLOR_TEXTO, COLOR_TARJETA);
+  pintar(zSiguiente, n > 1 ? opciones[(sel + 1) % n] : "", COLOR_TENUE);
+
+  if (segmentoLista != sel) {
+    const float hueco = 4;   // grados entre segmentos
+    float tramo = 360.0f / n;
+    if (segmentoLista >= 0) pantalla::arco(ANILLO_EXT, ANILLO_INT, segmentoLista * tramo + hueco / 2, (segmentoLista + 1) * tramo - hueco / 2, COLOR_BORDE);
+    pantalla::arco(ANILLO_EXT, ANILLO_INT, sel * tramo + hueco / 2, (sel + 1) * tramo - hueco / 2, COLOR_AZUL);
+    segmentoLista = sel;
   }
 }
 
-}  // namespace
+// ------------------ unidades ------------------
 
-namespace ui {
+const float GRAMOS_POR_ONZA = 28.349523125f;
 
-// ------------------ arranque ------------------
+const char* nombreUnidad(Unidad u) {
+  switch (u) {
+    case UNIDAD_KG: return "kg";
+    case UNIDAD_OZ: return "oz";
+    default:        return "g";
+  }
+}
+
+void formatearPeso(float gramos, Unidad u, float divisionG, char* texto, size_t tam) {
+  // Primero se redondea a la division: la bascula no promete mas que eso.
+  float redondo = roundf(gramos / divisionG) * divisionG;
+  int   decG    = divisionG < 1.0f ? 1 : 0;
+
+  float valor;
+  int   dec;
+  switch (u) {
+    case UNIDAD_KG: valor = redondo / 1000.0f;       dec = decG + 3;                  break;
+    case UNIDAD_OZ: valor = redondo / GRAMOS_POR_ONZA; dec = divisionG < 0.3f ? 3 : 2; break;
+    default:        valor = redondo;                 dec = decG;                      break;
+  }
+  if (fabsf(valor) < 0.5f * powf(10, -dec)) valor = 0;   // sin "-0.0"
+  snprintf(texto, tam, "%.*f", dec, valor);
+}
+
+// ------------------ cambio de vista ------------------
+
+Vista vista = V_PESAR;
+
+void irA(Vista v) {
+  vista = v;
+  switch (v) {
+    case V_PESAR:       vPesar::entrar();          break;
+    case V_MENU:        vMenu::entrar();           break;
+    case V_AJUSTES:     vAjustes::entrar();        break;
+    case V_DIAGNOSTICO: vDiagnostico::entrar();    break;
+    case V_CALIBRAR:    vCalibrar::entrar(false);  break;
+  }
+}
+
+// ------------------ publico ------------------
 
 void arranque(uint16_t duracionMs) {
   pantalla::limpiar();
@@ -109,90 +173,35 @@ void arranque(uint16_t duracionMs) {
   delay(duracionMs);
 }
 
-// ------------------ prueba de hardware ------------------
-
-void pruebaHardwareEntrar() {
-  pantalla::limpiar();
-  anilloPintado = -1;
-  for (Zona* z : { &zTitulo, &zAviso, &zNumero, &zUnidad, &zEstado }) olvidar(*z);
-  for (int8_t& t : teclasPintadas) t = -1;
-
-  pintar(zTitulo, "PRUEBA", COLOR_AZUL);
-  pintar(zAviso, NOMBRE_PLACA, COLOR_TENUE);
-  avisoHastaMs = millis() + 2500;
-}
-
-void pruebaHardwareTecla(const EventoTecla& e) {
-  char texto[40];
-  const char* tipos[] = { "corta", "larga", "repite" };
-  snprintf(texto, sizeof(texto), "%s · %s", nombreTecla(e.tecla), tipos[e.tipo]);
-
-  switch (e.tecla) {
-    case TECLA_OK:
-      if (e.tipo == PULSACION_CORTA) { ceroCrudo = bascula::leer().promedio; aviso("OK · cero tomado", COLOR_VERDE); return; }
-      if (e.tipo == PULSACION_LARGA) { ceroCrudo = 0; aviso("OK larga · sin cero", COLOR_AMBAR); return; }
-      break;
-
-    case TECLA_ARRIBA:
-    case TECLA_ABAJO:
-      if (!pantalla::tieneBrillo()) { aviso("BL fijo a 3V3", COLOR_AMBAR); return; }
-      nivelBrillo = constrain((int)nivelBrillo + (e.tecla == TECLA_ARRIBA ? 15 : -15), 10, 255);
-      pantalla::brillo(nivelBrillo);
-      snprintf(texto, sizeof(texto), "%s · brillo %u", nombreTecla(e.tecla), nivelBrillo);
-      break;
-
-    case TECLA_MENU:
-      if (e.tipo == PULSACION_LARGA) {       // contornos de las zonas: revisar el diseno
-        pantalla::depuracion(!pantalla::depuracionActiva());
-        pruebaHardwareEntrar();
-        return;
-      }
-      break;
-
-    default: break;
-  }
-  aviso(texto);
-}
-
-void pruebaHardwareRefrescar(const Lectura& l) {
-  char texto[40];
-
-  if (avisoHastaMs && millis() > avisoHastaMs) {
-    avisoHastaMs = 0;
-    pintar(zAviso, "MENÚ larga: ver zonas", COLOR_TENUE);
-  }
-
-  // Un DOUT al aire se lee siempre "listo" y dispara las muestras por
-  // segundo muy por encima de lo que el HX711 puede dar.
-  bool doutAlAire = l.muestrasPorSegundo > HX_MUESTRAS_POR_SEGUNDO * 2.0f;
-
-  if (l.estado == HX_SIN_RESPUESTA || doutAlAire) {
-    pintar(zNumero, "SIN CELDA", COLOR_NARANJA);
-    pintar(zUnidad, doutAlAire ? "revisa el cable DOUT" : "revisa el HX711", COLOR_TENUE);
-    anillo(1.0f, COLOR_NARANJA);
-  } else if (l.estado == HX_SATURADO) {
-    pintar(zNumero, "SATURADO", COLOR_NARANJA);
-    pintar(zUnidad, "revisa E+ E- A+ A-", COLOR_TENUE);
-    anillo(1.0f, COLOR_NARANJA);
+void iniciar() {
+  if (ajustes::actual().cal.valida) {
+    irA(V_PESAR);
   } else {
-    int32_t relativo = l.promedio - ceroCrudo;
-    snprintf(texto, sizeof(texto), "%ld", (long)relativo);
-    // El crudo completo (7 digitos y signo) no cabe con la fuente grande:
-    // en ese caso baja a la de titulo. Con el cero tomado casi siempre cabe.
-    zNumero.fuente = pantalla::anchoTexto(texto, F_NUMERO) <= zNumero.ancho ? F_NUMERO : F_TITULO;
-    pintar(zNumero, texto, COLOR_TEXTO);
-    pintar(zUnidad, ceroCrudo ? "desde el cero" : "cuentas crudas", COLOR_TENUE);
-    anillo(fabsf((float)relativo) / CUENTAS_ANILLO_LLENO, COLOR_AZUL);
+    vista = V_CALIBRAR;
+    vCalibrar::entrar(true);
   }
+}
 
-  snprintf(texto, sizeof(texto), "%.1f SPS · ruido %ld", l.muestrasPorSegundo, (long)l.ruidoPicoPico);
-  pintar(zEstado, texto, l.tramasLentas ? COLOR_AMBAR : COLOR_TENUE);
+void tecla(const EventoTecla& e) {
+  // MENU larga: de cualquier lado a la pantalla de pesar.
+  if (e.tecla == TECLA_MENU && e.tipo == PULSACION_LARGA) { irA(V_PESAR); return; }
 
-  for (uint8_t i = 0; i < 4; i++) {
-    int8_t presionada = teclado::presionada((Tecla)i) ? 1 : 0;
-    if (presionada == teclasPintadas[i]) continue;
-    teclasPintadas[i] = presionada;
-    pantalla::circulo(TECLAS_X[i], TECLAS_Y, TECLAS_RADIO, presionada ? COLOR_AZUL : COLOR_BORDE);
+  switch (vista) {
+    case V_PESAR:       vPesar::tecla(e);       break;
+    case V_MENU:        vMenu::tecla(e);        break;
+    case V_AJUSTES:     vAjustes::tecla(e);     break;
+    case V_DIAGNOSTICO: vDiagnostico::tecla(e); break;
+    case V_CALIBRAR:    vCalibrar::tecla(e);    break;
+  }
+}
+
+void refrescar() {
+  switch (vista) {
+    case V_PESAR:       vPesar::refrescar();       break;
+    case V_MENU:        vMenu::refrescar();        break;
+    case V_AJUSTES:     vAjustes::refrescar();     break;
+    case V_DIAGNOSTICO: vDiagnostico::refrescar(); break;
+    case V_CALIBRAR:    vCalibrar::refrescar();    break;
   }
 }
 

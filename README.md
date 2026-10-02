@@ -12,6 +12,7 @@ productos de [tostatronic.com](https://www.tostatronic.com). Todo es libre:
 | [ESP32_WROVER_CAM](ESP32_WROVER_CAM/) | Cámara WiFi con portal cautivo: sin claves en el código, video en vivo en el navegador | ESP32-WROVER-CAM |
 | [Bascula_Multiusos](Bascula_Multiusos/) | Báscula con celda de carga + HX711, pantalla redonda GC9A01, contador de piezas y calorías *(en desarrollo)* | ESP32-C6 · ESP32-C5 |
 | [Timer_LM555](Timer_LM555/) | Oscilador astable con LM555, con y sin potenciómetro | — (sin microcontrolador) |
+| [Contador_74LS48](Contador_74LS48/) | Contador 0–9: display de cátodo común manejado con 4 GPIO y el decodificador 74LS48 | ESP32 · ESP32-S3 |
 | [Display_7_Segmentos](Display_7_Segmentos/) | Cátodo común vs ánodo común: diferencia, cómo identificarlo y con qué usarlo | — |
 
 Cada carpeta tiene su propio README con conexiones, lista de materiales y

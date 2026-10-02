@@ -1,0 +1,20 @@
+1
+00:00:00,000 --> 00:00:01,900
+tu báscula tiene un secreto
+
+2
+00:00:02,766 --> 00:00:03,333
+adentro hay
+
+3
+00:00:03,333 --> 00:00:06,266
+una barra de metal que se dobla cada vez que te subes
+
+4
+00:00:06,666 --> 00:00:07,666
+quieres ver cómo funciona
+
+5
+00:00:08,066 --> 00:00:09,733
+corre a ver nuestro nuevo reel
+

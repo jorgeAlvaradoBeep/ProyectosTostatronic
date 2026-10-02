@@ -1,0 +1,72 @@
+1
+00:00:00,100 --> 00:00:02,966
+conoce la e s p 32 e 6
+
+2
+00:00:03,366 --> 00:00:06,666
+la primera e s p 32 con wifi 6
+
+3
+00:00:07,166 --> 00:00:08,133
+pero no se queda ahí
+
+4
+00:00:08,533 --> 00:00:10,300
+además de wifi y Bluetooth
+
+5
+00:00:10,466 --> 00:00:13,133
+5 trae un tercer radio para zigbee z
+
+6
+00:00:13,500 --> 00:00:14,600
+Wave y Matter
+
+7
+00:00:14,900 --> 00:00:16,600
+o sea puede hablar directo con focos
+
+8
+00:00:16,766 --> 00:00:18,500
+sensores y enchufes inteligentes
+
+9
+00:00:19,100 --> 00:00:21,600
+su cerebro un procesador risc Five
+
+10
+00:00:21,900 --> 00:00:26,000
+a 160 megahertz con 512kB de memoria
+
+11
+00:00:26,366 --> 00:00:27,500
+y viene en dos tamaños
+
+12
+00:00:27,966 --> 00:00:30,800
+la n 4 4 megas de flash LED
+
+13
+00:00:31,000 --> 00:00:33,766
+RGB integrado y lista para la Protoboard
+
+14
+00:00:33,966 --> 00:00:34,900
+y la supermini
+
+15
+00:00:35,166 --> 00:00:37,800
+casi del tamaño de una estampilla para proyectos
+
+16
+00:00:37,966 --> 00:00:39,366
+donde cada milímetro cuenta
+
+17
+00:00:39,933 --> 00:00:44,266
+las dos se programan con Arduino micropython o esp home
+
+18
+00:00:44,466 --> 00:00:47,133
+y se llevan de maravilla con home Assistant
+

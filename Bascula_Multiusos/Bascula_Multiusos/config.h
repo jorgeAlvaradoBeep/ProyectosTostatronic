@@ -92,9 +92,9 @@
   #define PIN_TFT_BL      SIN_PIN   // -> 3V3
   #define PIN_HX_DOUT      6
   #define PIN_HX_SCK       7
-  #define PIN_TECLA_1      0
-  #define PIN_TECLA_2      1
-  #define PIN_TECLA_3      2
+  #define PIN_TECLA_1      2   // orden verificado en placa real: el conector
+  #define PIN_TECLA_2      1   // del teclado no sigue el orden de las teclas
+  #define PIN_TECLA_3      0
   #define PIN_TECLA_4      3
 
 #elif PLACA == PLACA_C5_DEVKIT
@@ -154,14 +154,58 @@ const uint8_t  TFT_BRILLO       = 200;       // 0..255 (solo si BL va a un GPIO)
 
 // ------------------ HX711 ------------------
 
-// Tu modulo esta a 80 muestras por segundo (pin RATE en alto). Si usas
-// uno de fabrica (10 SPS), cambia este valor: de aqui salen las ventanas
-// del filtro y los tiempos de estabilidad.
-const uint8_t  HX_MUESTRAS_POR_SEGUNDO = 80;
+// El modulo de fabrica viene a 10 muestras por segundo (pin RATE en bajo),
+// medido asi en la placa real. Si le pones RATE en alto (80 SPS), cambia
+// este valor: de aqui salen las ventanas del filtro y los tiempos de
+// estabilidad.
+const uint8_t  HX_MUESTRAS_POR_SEGUNDO = 10;
 
 // Si DOUT no baja en este tiempo, la celda esta desconectada o el HX711
 // sin alimentacion. Se avisa en pantalla en vez de colgar la bascula.
 const uint16_t HX_ESPERA_MS = 300;
+
+// ------------------ BASCULA ------------------
+
+// Celdas soportadas y su "division": el paso minimo que muestra la
+// pantalla. No es la resolucion del HX711 (que es mucho mas fina), sino
+// lo que la celda sostiene sin que el ultimo digito baile.
+struct Celda {
+  uint8_t capacidadKg;
+  float   divisionG;
+};
+const Celda CELDAS[] = {
+  {  1, 0.1f },
+  {  5, 0.5f },
+  { 10, 1.0f },
+  { 20, 1.0f },
+};
+const uint8_t NUM_CELDAS = sizeof(CELDAS) / sizeof(CELDAS[0]);
+
+// Estabilidad: el peso se da por asentado cuando el valor filtrado pasa
+// este tiempo sin salirse de una banda de +/- ESTABLE_BANDA_DIV divisiones.
+const uint16_t ESTABLE_MS          = 1000;
+const float    ESTABLE_BANDA_DIV   = 1.0f;
+const int32_t  ESTABLE_BANDA_SIN_CAL = 300;   // en cuentas, antes de calibrar
+
+// Cero al arrancar: si lo que hay en el plato difiere del cero calibrado
+// en menos de este porcentaje de la capacidad, se toma como cero nuevo
+// (corrige la deriva de un dia a otro). Si es mas, se asume que hay algo
+// encima y se respeta el cero de la calibracion.
+const float CERO_ARRANQUE_PORCIENTO = 10.0f;
+
+// Seguimiento de cero: con el plato vacio y estable, derivas menores a
+// media division se corrigen solas (como hacen las basculas comerciales).
+const float SEGUIMIENTO_CERO_DIV = 0.5f;
+
+// Tara y cero solo se toman con el peso estable. Si se piden mientras se
+// mueve, se espera hasta este tiempo a que se asiente.
+const uint16_t ESPERA_ESTABLE_MS = 4000;
+
+// Calibracion: la carga de prueba debe mover la lectura al menos esto,
+// y pesar al menos este porcentaje de la capacidad. Con pesos muy chicos
+// el error de la calibracion se multiplica en todo el rango.
+const int32_t  CAL_CUENTAS_MINIMAS   = 5000;
+const float    CAL_PESO_MIN_PORCIENTO = 5.0f;
 
 // ------------------ TECLADO 1x4 ------------------
 // Comun del teclado a GND; cada tecla a su GPIO con INPUT_PULLUP.
@@ -173,7 +217,7 @@ const uint16_t TECLA_REPETIR_MS   = 110;   // repeticion mientras sigue presiona
 // ------------------ ATRIBUCION ------------------
 
 #define PROYECTO_NOMBRE   "Báscula Multiusos"
-#define PROYECTO_VERSION  "0.1"
+#define PROYECTO_VERSION  "0.2"
 #define PROYECTO_AUTOR    "Tostatronic"
 #define PROYECTO_ING      "Ing. Jorge Alvarado"
 #define PROYECTO_WEB      "tostatronic.com"

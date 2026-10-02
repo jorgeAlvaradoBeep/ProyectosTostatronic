@@ -9,19 +9,20 @@
  *  y tamano, y pantalla::zonaTexto() verifica que la zona quepa
  *  en el circulo util (y lo reporta por Serial si no).
  *
- *  Reparto de la pantalla:
- *      anillo perimetral .. indicador (r 111 a 119)
- *      franja superior .... modo / titulo
- *      centro ............. el numero grande + unidad
- *      franja inferior .... estado
+ *  Vistas (una por archivo):
+ *    ui_pesar.cpp        pantalla principal: peso, tara, cero
+ *    ui_menu.cpp         menu principal y ajustes
+ *    ui_calibrar.cpp     asistente de calibracion
+ *    ui_diagnostico.cpp  prueba de hardware y prueba de WiFi
  *
- *  FASE 1: pantalla de arranque y prueba de hardware.
+ *  Teclas en todas las vistas:
+ *    MENU corta ... menu / atras        MENU larga ... volver a pesar
+ *    ARRIBA/ABAJO . moverse o cambiar   OK ........... confirmar
  * ============================================================
  */
 
 #pragma once
 #include <Arduino.h>
-#include "bascula.h"
 #include "teclado.h"
 
 namespace ui {
@@ -29,9 +30,11 @@ namespace ui {
 // Logo + atribucion. Bloquea 'duracionMs' (solo se usa al arrancar).
 void arranque(uint16_t duracionMs);
 
-// Prueba de hardware: peso crudo, muestras por segundo, ruido y teclas.
-void pruebaHardwareEntrar();
-void pruebaHardwareTecla(const EventoTecla& evento);
-void pruebaHardwareRefrescar(const Lectura& lectura);
+// Primera vista: el asistente de calibracion si nunca se ha calibrado;
+// si no, la de pesar.
+void iniciar();
+
+void tecla(const EventoTecla& evento);
+void refrescar();
 
 }  // namespace ui
