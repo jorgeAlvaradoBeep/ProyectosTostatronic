@@ -170,9 +170,10 @@ namespace bascula {
 void iniciar() {
   celda.iniciar(PIN_HX_DOUT, PIN_HX_SCK);
 
-  // Prioridad por encima de loop() (1) y del servidor web (5): cuando hay
-  // dato listo se atiende ya. No acapara el CPU: casi todo el tiempo esta
-  // dormida esperando al HX711.
+  // Prioridad por encima de loop() (1), donde corren la pantalla, la red y
+  // el servidor web: cuando hay dato listo se atiende ya, aunque loop()
+  // este ocupado sirviendo una pagina o recibiendo un firmware. No acapara
+  // el CPU: casi todo el tiempo esta dormida esperando al HX711.
   xTaskCreate(tareaBascula, "bascula", 4096, nullptr, 6, nullptr);
 }
 

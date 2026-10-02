@@ -5,7 +5,7 @@ set -e
 cd "$(dirname "$0")"
 SK=../../../Bascula_Multiusos
 mkdir -p salida
-c++ -std=c++17 -O1 -w -DCONFIG_IDF_TARGET_ESP32C6 -Ifalsos -I"$SK" simulador.cpp "$SK"/ui*.cpp "$SK/pantalla.cpp" -o salida/simulador
+c++ -std=c++17 -O1 -w -DCONFIG_IDF_TARGET_ESP32C6 -Ifalsos -I"$SK" simulador.cpp "$SK"/ui*.cpp "$SK/contador.cpp" "$SK/pantalla.cpp" -o salida/simulador
 ./salida/simulador
 python3 - <<'PY'
 # PPM -> PNG con la mascara circular de la GC9A01 y una hoja con todas.

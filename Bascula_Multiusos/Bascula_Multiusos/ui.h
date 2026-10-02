@@ -12,6 +12,8 @@
  *  Vistas (una por archivo):
  *    ui_pesar.cpp        pantalla principal: peso, tara, cero
  *    ui_menu.cpp         menu principal y ajustes
+ *    ui_contar.cpp       contador de piezas
+ *    ui_conexion.cpp     WiFi y actualizacion de firmware
  *    ui_calibrar.cpp     asistente de calibracion
  *    ui_diagnostico.cpp  prueba de hardware y prueba de WiFi
  *

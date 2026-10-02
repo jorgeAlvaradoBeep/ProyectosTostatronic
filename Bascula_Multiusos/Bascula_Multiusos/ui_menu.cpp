@@ -8,8 +8,7 @@
  *  entrar (menu) o cambiar el valor (ajustes), MENU corta para
  *  regresar.
  *
- *  Contar piezas, Calorias y Conexion se agregan al menu en las
- *  fases 3 a 5.
+ *  Calorias se agrega al menu en la fase 5.
  * ============================================================
  */
 
@@ -25,10 +24,12 @@ namespace {
 
 struct Opcion { const char* nombre; Vista vista; };
 const Opcion OPCIONES[] = {
-  { "Pesar",       V_PESAR },
-  { "Calibrar",    V_CALIBRAR },
-  { "Ajustes",     V_AJUSTES },
-  { "Diagnóstico", V_DIAGNOSTICO },
+  { "Pesar",         V_PESAR },
+  { "Contar piezas", V_CONTAR },
+  { "Conexión",      V_CONEXION },
+  { "Calibrar",      V_CALIBRAR },
+  { "Ajustes",       V_AJUSTES },
+  { "Diagnóstico",   V_DIAGNOSTICO },
 };
 const uint8_t N = sizeof(OPCIONES) / sizeof(OPCIONES[0]);
 const char*   NOMBRES[N];

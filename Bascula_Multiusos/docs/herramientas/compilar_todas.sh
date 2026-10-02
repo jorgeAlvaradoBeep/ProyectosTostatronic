@@ -22,7 +22,8 @@ PLACAS=( "1     esp32c6  -                                C6-DevKit"
 fallas=0
 for fila in "${PLACAS[@]}"; do
   read -r placa chip extra nombre <<< "$fila"
-  fqbn="esp32:esp32:${chip}:PartitionScheme=huge_app"
+  # min_spiffs = dos particiones de programa: la que pide la actualizacion por WiFi
+  fqbn="esp32:esp32:${chip}:PartitionScheme=min_spiffs"
   [ "$extra" != "-" ] && fqbn="${fqbn},${extra}"
 
   echo "=== ${nombre}  (${fqbn})"

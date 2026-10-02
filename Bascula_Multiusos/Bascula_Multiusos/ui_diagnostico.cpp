@@ -13,13 +13,15 @@
  *    ABAJO ......... contorno de las zonas de texto (revisar diseno)
  *    MENU corta .... regresa al menu
  *
- *  La prueba de WiFi sigue activa al salir de aqui: asi se puede
- *  pesar y calibrar con el radio transmitiendo.
+ *  La prueba de WiFi carga el WiFi real (el portal o tu red, como
+ *  este en ese momento) y sigue activa al salir de aqui: asi se
+ *  puede pesar y calibrar con el radio transmitiendo.
  * ============================================================
  */
 
 #include "ui_comun.h"
 #include "prueba_wifi.h"
+#include "red.h"
 
 namespace ui {
 namespace vDiagnostico {
@@ -57,8 +59,9 @@ void tecla(const EventoTecla& e) {
 
     case TECLA_ARRIBA:
       if (e.tipo != PULSACION_CORTA) return;
-      if (pruebaWifi::activa()) { pruebaWifi::detener(); aviso("WiFi de prueba apagado", COLOR_AMBAR); }
-      else                      { pruebaWifi::iniciar(); aviso("WiFi de prueba encendido", COLOR_AZUL); }
+      if (pruebaWifi::activa())    { pruebaWifi::detener(); aviso("Prueba de WiFi apagada", COLOR_AMBAR); }
+      else if (!red::encendida())  aviso("Enciende el WiFi en Conexión", COLOR_AMBAR, 2500);
+      else                         { pruebaWifi::iniciar(); aviso("Prueba de WiFi encendida", COLOR_AZUL); }
       break;
 
     case TECLA_ABAJO:

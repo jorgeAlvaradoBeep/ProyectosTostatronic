@@ -1,1 +1,4 @@
 .DS_Store
+
+# Binarios que exporta el Arduino IDE (para actualizar por WiFi)
+Bascula_Multiusos/Bascula_Multiusos/build/

@@ -7,6 +7,8 @@
 
 #include "ui.h"
 #include "ui_comun.h"
+#include "red.h"
+#include "servidor_web.h"
 #include "logo.h"
 
 namespace ui {
@@ -42,6 +44,28 @@ void pintarNumero(Zona& z, const char* texto, uint16_t color) {
   Fuente f = soloCifras && pantalla::anchoTexto(texto, F_NUMERO) <= z.ancho ? F_NUMERO : F_TITULO;
   if (f != z.fuente) { z.fuente = f; olvidar(z); }
   pintar(z, texto, color);
+}
+
+void recortar(const char* texto, Fuente fuente, int16_t ancho, char* salida, size_t tam) {
+  strlcpy(salida, texto, tam);
+  if (pantalla::anchoTexto(salida, fuente) <= ancho) return;
+
+  size_t n = strlen(salida);
+  if (n + 4 > tam) n = tam - 4;          // lugar para "…" (3 bytes) y el fin de cadena
+  while (n > 0) {
+    // Un caracter con acento ocupa varios bytes: se quita completo.
+    do { n--; } while (n > 0 && ((uint8_t)salida[n] & 0xC0) == 0x80);
+    strcpy(salida + n, "…");
+    if (pantalla::anchoTexto(salida, fuente) <= ancho) return;
+  }
+}
+
+void pintarAjustado(Zona& z, const char* texto, Fuente grande, Fuente chica, uint16_t color) {
+  Fuente f = pantalla::anchoTexto(texto, grande) <= z.ancho ? grande : chica;
+  if (f != z.fuente) { z.fuente = f; olvidar(z); }
+  char cabe[sizeof(z.texto)];
+  recortar(texto, f, z.ancho, cabe, sizeof(cabe));
+  pintar(z, cabe, color);
 }
 
 // ------------------ anillo perimetral ------------------
@@ -84,7 +108,9 @@ bool avisoVigente() {
 void limpiarVista() {
   pantalla::limpiar();
   for (Zona* z : { &zTitulo, &zAviso, &zNumero, &zUnidad, &zEstado, &zPie, &zLinea1, &zLinea2, &zDato }) olvidar(*z);
+  // pintarNumero() y pintarAjustado() pudieron dejarlas con la fuente chica.
   zNumero.fuente = F_NUMERO;
+  zLinea1.fuente = zLinea2.fuente = F_TEXTO;
   anilloPintado  = -1;
   segmentoLista  = -1;
   avisoHastaMs   = 0;
@@ -148,10 +174,13 @@ void formatearPeso(float gramos, Unidad u, float divisionG, char* texto, size_t 
 Vista vista = V_PESAR;
 
 void irA(Vista v) {
+  if (vista == V_CONEXION) vConexion::salir();
   vista = v;
   switch (v) {
     case V_PESAR:       vPesar::entrar();          break;
     case V_MENU:        vMenu::entrar();           break;
+    case V_CONTAR:      vContar::entrar();         break;
+    case V_CONEXION:    vConexion::entrar();       break;
     case V_AJUSTES:     vAjustes::entrar();        break;
     case V_DIAGNOSTICO: vDiagnostico::entrar();    break;
     case V_CALIBRAR:    vCalibrar::entrar(false);  break;
@@ -180,6 +209,31 @@ void iniciar() {
     vista = V_CALIBRAR;
     vCalibrar::entrar(true);
   }
+  // Mientras llega un firmware por WiFi, loop() no corre: el servidor
+  // avisa aqui para que el porcentaje se siga viendo.
+  web::alAvanzar(refrescar);
+}
+
+/* La red se conecta y se cae "por debajo", sin importar que vista este
+ * abierta. Aqui se decide que tanto interrumpir: lo justo. */
+void atenderEventoDeRed() {
+  char texto[40];
+  switch (red::evento()) {
+    case EVENTO_RED_CONECTO_NUEVA:
+      // La acaban de configurar desde el telefono: se muestra la IP, salvo
+      // que esten a media calibracion o en otro menu.
+      if (vista == V_PESAR || vista == V_MENU) irA(V_CONEXION);
+      break;
+    case EVENTO_RED_CONECTO:
+      if (vista != V_PESAR) break;
+      snprintf(texto, sizeof(texto), "WiFi: %s", red::info().ip);
+      aviso(texto, COLOR_AZUL, 4000);
+      break;
+    case EVENTO_RED_SE_PERDIO:
+      if (vista == V_PESAR) aviso("WiFi: sin conexión", COLOR_AMBAR, 3000);
+      break;
+    default: break;
+  }
 }
 
 void tecla(const EventoTecla& e) {
@@ -189,6 +243,8 @@ void tecla(const EventoTecla& e) {
   switch (vista) {
     case V_PESAR:       vPesar::tecla(e);       break;
     case V_MENU:        vMenu::tecla(e);        break;
+    case V_CONTAR:      vContar::tecla(e);      break;
+    case V_CONEXION:    vConexion::tecla(e);    break;
     case V_AJUSTES:     vAjustes::tecla(e);     break;
     case V_DIAGNOSTICO: vDiagnostico::tecla(e); break;
     case V_CALIBRAR:    vCalibrar::tecla(e);    break;
@@ -196,9 +252,13 @@ void tecla(const EventoTecla& e) {
 }
 
 void refrescar() {
+  atenderEventoDeRed();
+
   switch (vista) {
     case V_PESAR:       vPesar::refrescar();       break;
     case V_MENU:        vMenu::refrescar();        break;
+    case V_CONTAR:      vContar::refrescar();      break;
+    case V_CONEXION:    vConexion::refrescar();    break;
     case V_AJUSTES:     vAjustes::refrescar();     break;
     case V_DIAGNOSTICO: vDiagnostico::refrescar(); break;
     case V_CALIBRAR:    vCalibrar::refrescar();    break;

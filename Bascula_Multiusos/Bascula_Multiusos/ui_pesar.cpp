@@ -139,7 +139,7 @@ void refrescar() {
   else if (p.estable)                pintar(zEstado, "• ESTABLE", COLOR_VERDE);
   else                               pintar(zEstado, "midiendo…", COLOR_TENUE);
 
-  if (pruebaWifi::activa())            pintar(zPie, "WiFi de prueba", COLOR_AZUL);
+  if (pruebaWifi::activa())            pintar(zPie, "prueba de WiFi", COLOR_AZUL);
   else if (p.hayCelda && p.calibrada) pintar(zPie, "OK: tara", COLOR_TENUE);
   else                                pintar(zPie, "", COLOR_TENUE);
 }

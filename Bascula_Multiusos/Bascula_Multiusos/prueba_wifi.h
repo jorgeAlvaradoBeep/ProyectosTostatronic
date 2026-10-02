@@ -8,14 +8,18 @@
  *  HX711 (ver hx711.h). Con el WiFi apagado cualquier bascula
  *  funciona; la prueba de verdad es con el radio ocupado.
  *
- *  Levanta una red abierta "Tostatronic-Bascula-Prueba" y manda
- *  paquetes UDP de difusion lo mas rapido que el radio acepta:
- *  maxima carga de interrupciones del WiFi. Mientras tanto se
- *  comparan el ruido, los atipicos y las tramas lentas contra la
- *  misma medicion con el WiFi apagado.
+ *  Usa el WiFi real de la bascula (red.h), como este en ese
+ *  momento, y manda paquetes UDP lo mas rapido que el radio
+ *  acepta: maxima carga de interrupciones del WiFi.
  *
- *  No necesita internet ni claves. En la fase 3 el WiFi real
- *  (portal cautivo) reemplaza a esta prueba en el uso diario.
+ *    Conectada a tu red -> al router, al puerto de "descarte":
+ *                          el trafico no molesta a nadie mas.
+ *    Portal abierto ..... -> difusion en la red propia.
+ *
+ *  Mientras tanto se comparan el ruido, los atipicos y las tramas
+ *  lentas contra la misma medicion con la prueba apagada.
+ *
+ *  No enciende ni apaga el WiFi: eso es de MENU > Conexion.
  * ============================================================
  */
 

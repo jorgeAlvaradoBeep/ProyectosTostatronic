@@ -16,7 +16,11 @@
  *       PLACA_C5_DEVKIT   ESP32C5 Dev Module
  *       PLACA_C5_MINI     ESP32C5 Dev Module   + USB CDC On Boot: Enabled
  *
- *     Partition Scheme (todas): Huge APP (3MB No OTA/1MB SPIFFS)
+ *     Partition Scheme (todas): Minimal SPIFFS (1.9MB APP with OTA)
+ *
+ *     Ese esquema parte la Flash en dos copias del programa: es lo
+ *     que permite actualizar el firmware por WiFi. Con "Huge APP" la
+ *     bascula funciona igual, pero sin actualizacion por WiFi.
  *
  *     Las mini no traen convertidor USB-serie: su USB-C va directo
  *     al chip. Sin "USB CDC On Boot: Enabled" el sketch funciona,
@@ -207,6 +211,19 @@ const uint16_t ESPERA_ESTABLE_MS = 4000;
 const int32_t  CAL_CUENTAS_MINIMAS   = 5000;
 const float    CAL_PESO_MIN_PORCIENTO = 5.0f;
 
+// ------------------ CONTADOR DE PIEZAS ------------------
+
+// La muestra con la que se saca el peso de una pieza debe pesar al menos
+// estas divisiones. La bascula se puede equivocar media division al pesar
+// la muestra; con 50 divisiones ese error es del 1 %, y el conteo sale
+// exacto hasta unas 50 piezas. Con muestras mas chicas se avisa y se
+// sugiere cuantas piezas poner. Para contar cientos: muestras mas grandes.
+const float CONTAR_MUESTRA_MIN_DIV = 50.0f;
+
+// Si el conteo cae a menos de esto de la mitad entre dos enteros (por
+// ejemplo 12.4 piezas), se avisa: puede ser 12 o 13.
+const float CONTAR_AMBIGUO = 0.15f;
+
 // ------------------ TECLADO 1x4 ------------------
 // Comun del teclado a GND; cada tecla a su GPIO con INPUT_PULLUP.
 
@@ -214,10 +231,52 @@ const uint16_t TECLA_REBOTE_MS    = 25;
 const uint16_t TECLA_LARGA_MS     = 600;
 const uint16_t TECLA_REPETIR_MS   = 110;   // repeticion mientras sigue presionada
 
+// ------------------ RED WiFi ------------------
+// Sin claves escritas en el codigo: la red se elige desde el telefono, en
+// el portal que abre la propia bascula, y se guarda en la NVS.
+
+#define RED_AP_SSID      "Tostatronic-Bascula"   // red abierta del portal
+#define RED_NOMBRE_MDNS  "tostabascula"          // http://tostabascula.local
+
+const uint32_t RED_ESPERA_MS     = 20000;    // tope para enlazarse al router
+const uint32_t RED_REINTENTO_MS  = 180000;   // portal sin nadie conectado: reintenta la red guardada
+
+// Ya conectada, la red del portal sigue un momento mas para que el
+// telefono alcance a leer la IP; luego se apaga sola.
+const uint32_t RED_CIERRE_PORTAL_MS     = 8000;    // desde que el telefono vio la IP
+const uint32_t RED_CIERRE_PORTAL_MAX_MS = 30000;   // aunque nunca la haya visto
+
+// Potencia de transmision. De fabrica son 20 dBm; con 15 cada rafaga del
+// radio jala menos corriente de los 3.3 V que comparte el HX711, y dentro
+// de una casa alcanza de sobra. Si el router queda lejos, sube a 20.
+const int8_t RED_POTENCIA_DBM = 15;
+
+// ------------------ ACTUALIZACION POR WiFi ------------------
+
+// La pagina solo acepta un firmware mientras la bascula lo permite: hay
+// que abrir MENU > Conexion > Actualizar con las teclas. Asi nadie en la
+// red puede cambiarle el programa sin estar frente a ella.
+const uint32_t OTA_VENTANA_MS = 300000;      // 5 minutos
+
+// Lo mismo para recalibrar desde la pagina web: tara, cero y conteo son
+// libres, pero cambiar la calibracion pide abrir antes el permiso en
+// MENU > Conexion > Calibrar web.
+const uint32_t CAL_WEB_VENTANA_MS = 300000;  // 5 minutos
+
+// Peso en vivo: cada cuanto se manda a los navegadores conectados, y
+// cuantos se atienden a la vez (cada uno deja una conexion abierta).
+const uint16_t WEB_PESO_MS      = 200;
+const uint8_t  WEB_MAX_OYENTES  = 4;
+
+// Un firmware recien llegado se da por bueno hasta que lleva este tiempo
+// corriendo. Si se reinicia antes (no arranca, se cuelga), la placa vuelve
+// sola al firmware anterior.
+const uint32_t OTA_CONFIRMAR_MS = 10000;
+
 // ------------------ ATRIBUCION ------------------
 
 #define PROYECTO_NOMBRE   "Báscula Multiusos"
-#define PROYECTO_VERSION  "0.2"
+#define PROYECTO_VERSION  "0.4"
 #define PROYECTO_AUTOR    "Tostatronic"
 #define PROYECTO_ING      "Ing. Jorge Alvarado"
 #define PROYECTO_WEB      "tostatronic.com"

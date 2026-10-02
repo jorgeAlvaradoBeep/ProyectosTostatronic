@@ -6,7 +6,7 @@
  *
  *  Uso interno de ui*.cpp. El resto del programa solo ve ui.h.
  *
- *  Cada vista (pesar, menu, calibrar...) tiene tres funciones:
+ *  Cada vista (pesar, menu, conexion...) tiene tres funciones:
  *    entrar()     pinta la pantalla desde cero
  *    tecla(e)     reacciona a una tecla
  *    refrescar()  se llama cada 100 ms; solo repinta lo que cambio
@@ -34,7 +34,7 @@
 
 namespace ui {
 
-enum Vista : uint8_t { V_PESAR, V_MENU, V_CALIBRAR, V_AJUSTES, V_DIAGNOSTICO };
+enum Vista : uint8_t { V_PESAR, V_MENU, V_CONTAR, V_CONEXION, V_CALIBRAR, V_AJUSTES, V_DIAGNOSTICO };
 void irA(Vista v);
 
 // ------------------ zonas de texto ------------------
@@ -56,6 +56,14 @@ void olvidar(Zona& z);
 // Para cantidades: fuente grande si el texto son solo cifras y cabe; si
 // no (letras, o demasiado ancho), la de titulo.
 void pintarNumero(Zona& z, const char* texto, uint16_t color = COLOR_TEXTO);
+
+// Para textos que no controlamos (el nombre de una red, una IP): fuente
+// 'grande' si cabe en la zona; si no, la 'chica'; y si ni asi, recortado.
+void pintarAjustado(Zona& z, const char* texto, Fuente grande, Fuente chica, uint16_t color = COLOR_TEXTO);
+
+// Copia 'texto' a 'salida' quitandole caracteres del final (y poniendo "…")
+// hasta que mida 'ancho' pixeles o menos. Respeta los acentos (UTF-8).
+void recortar(const char* texto, Fuente fuente, int16_t ancho, char* salida, size_t tam);
 
 extern Zona zTitulo, zAviso, zNumero, zUnidad, zEstado, zPie;
 extern Zona zLinea1, zLinea2, zDato;
@@ -88,8 +96,11 @@ void formatearPeso(float gramos, Unidad u, float divisionG, char* texto, size_t 
 
 namespace vPesar       { void entrar(); void tecla(const EventoTecla& e); void refrescar(); }
 namespace vMenu        { void entrar(); void tecla(const EventoTecla& e); void refrescar(); }
+namespace vContar      { void entrar(); void tecla(const EventoTecla& e); void refrescar(); }
 namespace vAjustes     { void entrar(); void tecla(const EventoTecla& e); void refrescar(); }
 namespace vDiagnostico { void entrar(); void tecla(const EventoTecla& e); void refrescar(); }
 namespace vCalibrar    { void entrar(bool primerArranque); void tecla(const EventoTecla& e); void refrescar(); }
+// salir(): la unica vista que deja algo abierto (el permiso para recibir firmware).
+namespace vConexion    { void entrar(); void tecla(const EventoTecla& e); void refrescar(); void salir(); }
 
 }  // namespace ui
