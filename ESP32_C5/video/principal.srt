@@ -1,0 +1,52 @@
+1
+00:00:00,133 --> 00:00:02,666
+tu wifi de 2.4 está saturado
+
+2
+00:00:03,100 --> 00:00:05,966
+conoce la e s p 32 c 5
+
+3
+00:00:06,500 --> 00:00:12,000
+la primera e s p 32 con wifi 6 de doble banda sí 2.4
+
+4
+00:00:12,500 --> 00:00:16,566
+y 5 gigahertz menos interferencia conexión más estable
+
+5
+00:00:16,933 --> 00:00:20,733
+y además Bluetooth 5 zigbee thread y mater
+
+6
+00:00:21,100 --> 00:00:21,900
+su procesador
+
+7
+00:00:22,066 --> 00:00:25,066
+riscfave llega a 240 megahertz
+
+8
+00:00:25,266 --> 00:00:30,300
+la defkit trae dos puertos USB c y LED RGB la mini
+
+9
+00:00:30,733 --> 00:00:33,133
+la misma potencia en un tamaño diminuto
+
+10
+00:00:33,533 --> 00:00:35,066
+se programan con Arduino
+
+11
+00:00:35,200 --> 00:00:37,700
+esp i d f o micropython
+
+12
+00:00:37,866 --> 00:00:39,266
+pídela en tostatronic
+
+13
+00:00:39,366 --> 00:00:41,366
+punto com con envíos a todo México
+
