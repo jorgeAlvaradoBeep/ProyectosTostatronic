@@ -9,6 +9,7 @@
 #include "ui_comun.h"
 #include "red.h"
 #include "servidor_web.h"
+#include "actualizador.h"
 #include "logo.h"
 
 namespace ui {
@@ -184,6 +185,8 @@ void irA(Vista v) {
     case V_AJUSTES:     vAjustes::entrar();        break;
     case V_DIAGNOSTICO: vDiagnostico::entrar();    break;
     case V_CALIBRAR:    vCalibrar::entrar(false);  break;
+    case V_ACTUALIZAR:  vActualizar::entrar();     break;
+    case V_AFINAR:      vAfinar::entrar();         break;
   }
 }
 
@@ -236,6 +239,17 @@ void atenderEventoDeRed() {
   }
 }
 
+/* El servidor tiene un firmware mas nuevo: se ofrece una vez por arranque,
+ * y solo cuando no se interrumpe nada (pesando o en el menu; a media
+ * calibracion o conteo, espera). Si dicen "ahora no", queda en Conexion. */
+void ofrecerActualizacion() {
+  if (vista != V_PESAR && vista != V_MENU) return;
+  InfoActualizador a = actualizador::info();
+  if (a.estado != ACT_DISPONIBLE || a.descartada || !a.hayLugar) return;
+  vActualizar::regresarA(V_PESAR);
+  irA(V_ACTUALIZAR);
+}
+
 void tecla(const EventoTecla& e) {
   // MENU larga: de cualquier lado a la pantalla de pesar.
   if (e.tecla == TECLA_MENU && e.tipo == PULSACION_LARGA) { irA(V_PESAR); return; }
@@ -248,11 +262,14 @@ void tecla(const EventoTecla& e) {
     case V_AJUSTES:     vAjustes::tecla(e);     break;
     case V_DIAGNOSTICO: vDiagnostico::tecla(e); break;
     case V_CALIBRAR:    vCalibrar::tecla(e);    break;
+    case V_ACTUALIZAR:  vActualizar::tecla(e);  break;
+    case V_AFINAR:      vAfinar::tecla(e);      break;
   }
 }
 
 void refrescar() {
   atenderEventoDeRed();
+  ofrecerActualizacion();
 
   switch (vista) {
     case V_PESAR:       vPesar::refrescar();       break;
@@ -262,6 +279,8 @@ void refrescar() {
     case V_AJUSTES:     vAjustes::refrescar();     break;
     case V_DIAGNOSTICO: vDiagnostico::refrescar(); break;
     case V_CALIBRAR:    vCalibrar::refrescar();    break;
+    case V_ACTUALIZAR:  vActualizar::refrescar();  break;
+    case V_AFINAR:      vAfinar::refrescar();      break;
   }
 }
 

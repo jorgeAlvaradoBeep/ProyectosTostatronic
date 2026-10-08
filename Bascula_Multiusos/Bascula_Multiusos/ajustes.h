@@ -19,6 +19,7 @@ enum Unidad : uint8_t { UNIDAD_G, UNIDAD_KG, UNIDAD_OZ, NUM_UNIDADES };
 
 struct Ajustes {
   Calibracion cal;
+  PerfilRuido ruido;               // lo aprendido en MENU > Afinar ruido
   uint8_t     capacidadKg = 1;
   Unidad      unidad      = UNIDAD_G;
   uint32_t    pesoCalG    = 500;   // ultimo peso de calibracion: se propone la siguiente vez

@@ -67,8 +67,13 @@
 
 // ------------------ PINES POR PLACA ------------------
 
+// ID_PLACA es el nombre con el que cada placa busca SU firmware en el
+// servidor de actualizaciones (ver "ACTUALIZACION DESDE EL SERVIDOR"):
+// asi un firmware de DevKit nunca se ofrece a una mini.
+
 #if PLACA == PLACA_C6_DEVKIT
   #define NOMBRE_PLACA    "ESP32-C6 DevKit"
+  #define ID_PLACA        "c6-devkit"
   #define PIN_TFT_SCK     18
   #define PIN_TFT_MOSI    19
   #define PIN_TFT_CS      20
@@ -88,6 +93,7 @@
   // (esta placa no expone EN/RST; el reinicio de la pantalla se hace por
   // comando). Si algun dia falta un pin mas: CS de la pantalla a GND.
   #define NOMBRE_PLACA    "ESP32-C6 Mini"
+  #define ID_PLACA        "c6-mini"
   #define PIN_TFT_SCK     18
   #define PIN_TFT_MOSI    19
   #define PIN_TFT_CS      20
@@ -103,6 +109,7 @@
 
 #elif PLACA == PLACA_C5_DEVKIT
   #define NOMBRE_PLACA    "ESP32-C5 DevKit"
+  #define ID_PLACA        "c5-devkit"
   #define PIN_TFT_SCK      6
   #define PIN_TFT_MOSI     7   // strapping de bajo riesgo (MOSI nativo de SPI2)
   #define PIN_TFT_DC       8
@@ -121,6 +128,7 @@
   // los 12 pines, con brillo por PWM incluido. Variante de ahorro si
   // necesitas pines:  BL -> 3V3  y  RST de la pantalla -> pin RST de la placa.
   #define NOMBRE_PLACA    "ESP32-C5 Mini"
+  #define ID_PLACA        "c5-mini"
   #define PIN_TFT_SCK      6
   #define PIN_TFT_MOSI     7   // strapping de bajo riesgo (MOSI nativo de SPI2)
   #define PIN_TFT_DC       8
@@ -205,6 +213,23 @@ const float SEGUIMIENTO_CERO_DIV = 0.5f;
 // mueve, se espera hasta este tiempo a que se asiente.
 const uint16_t ESPERA_ESTABLE_MS = 4000;
 
+// Retencion del ultimo digito: ya estable, el valor que se muestra solo
+// cambia cuando el filtrado se aleja mas de esto (en divisiones). Sin esto,
+// con el plato en reposo la pantalla baila entre -0.1, 0.0 y 0.1 cada vez
+// que el ruido cruza el medio de una division.
+const float HISTERESIS_DIV = 0.6f;
+
+// ------------------ AFINAR RUIDO (MENU > Afinar ruido) ------------------
+// Cada celda, cada mesa y cada fuente hacen un ruido distinto. Este
+// asistente ESCUCHA la celda en reposo (plato vacio y con un objeto) y mide
+// cuanto tarda en asentarse al poner y quitar algo. Con eso elige el tamano
+// del filtro, la banda de estabilidad y el promedio largo (ver ruido.h).
+const uint32_t AFINAR_ESCUCHA_MS      = 6000;   // cuanto se escucha cada vez
+const uint32_t AFINAR_ASENTAR_MAX_MS  = 8000;   // si no se asento en esto, se sigue de todos modos
+const float    AFINAR_ESCALON_DIV     = 20.0f;  // un objeto "cuenta" si mueve la lectura mas de esto
+const float    RUIDO_SIGMA_OBJETIVO_DIV = 0.3f; // ruido que se busca a la salida del filtro, en divisiones
+const float    RUIDO_PANTALLA_OBJETIVO_DIV = 0.15f;  // y en lo que se muestra, ya estable
+
 // Calibracion: la carga de prueba debe mover la lectura al menos esto,
 // y pesar al menos este porcentaje de la capacidad. Con pesos muy chicos
 // el error de la calibracion se multiplica en todo el rango.
@@ -273,10 +298,37 @@ const uint8_t  WEB_MAX_OYENTES  = 4;
 // sola al firmware anterior.
 const uint32_t OTA_CONFIRMAR_MS = 10000;
 
+// ------------------ ACTUALIZACION DESDE EL SERVIDOR ------------------
+// Cada vez que arranca y se conecta al WiFi, la bascula consulta en el
+// servidor de Tostatronic si hay un firmware mas nuevo para SU placa
+// (ID_PLACA). Si lo hay, lo ofrece en la pantalla; solo se descarga e
+// instala al presionar OK. Nunca se instala solo.
+//
+// En el servidor vive un archivo con la lista de versiones y, junto a el,
+// los .bin (los genera docs/herramientas/publicar_firmware.sh):
+//
+//   versiones.json
+//   {
+//     "c6-mini": { "version": "0.5", "archivo": "Bascula_v0.5_C6-Mini.bin",
+//                  "tamano": 1318912, "sha256": "...", "notas": "..." },
+//     ...
+//   }
+//
+// Lo descargado se comprueba contra el SHA-256 anunciado y, ademas, el
+// chip verifica la imagen antes de activarla. Si no arranca, regresa solo
+// al firmware anterior (OTA_CONFIRMAR_MS). Como se descarga por HTTP (sin
+// cifrar), el SHA-256 es lo que garantiza que llego lo que se publico.
+
+#define OTA_SERVIDOR_URL        "http://143.198.173.21/updates/bascula/"
+#define OTA_ARCHIVO_VERSIONES   "versiones.json"
+
+const uint32_t OTA_SERVIDOR_ESPERA_MS = 8000;    // tope para consultar la lista
+const uint32_t OTA_DESCARGA_ESPERA_MS = 15000;   // sin datos este tiempo: se corto la descarga
+
 // ------------------ ATRIBUCION ------------------
 
 #define PROYECTO_NOMBRE   "Báscula Multiusos"
-#define PROYECTO_VERSION  "0.4"
+#define PROYECTO_VERSION  "0.6"
 #define PROYECTO_AUTOR    "Tostatronic"
 #define PROYECTO_ING      "Ing. Jorge Alvarado"
 #define PROYECTO_WEB      "tostatronic.com"

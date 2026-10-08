@@ -17,6 +17,7 @@
 #include "prueba_wifi.h"
 #include "red.h"
 #include "servidor_web.h"
+#include "actualizador.h"
 #include "ui.h"
 
 uint32_t    relojFalsoMs = 1000;
@@ -33,6 +34,8 @@ static InfoRed       redFalsa;
 static bool          redEncendida = true;
 static EventoRed     eventoFalso = EVENTO_RED_NINGUNO;
 static Actualizacion otaFalsa;
+static InfoActualizador actFalsa;
+static Escucha escuchaFalsa;
 
 namespace bascula {
 void iniciar() {}
@@ -42,6 +45,10 @@ Peso peso() { return pesoFalso; }
 bool tarar() { return true; }
 bool cero() { return true; }
 void quitarTara() {}
+void perfil(const PerfilRuido& p) { std::printf("[bascula] perfil: sigma=%.1f ventana=%u asentamiento=%u ms\n", p.sigmaCuentas, p.ventana, p.asentamientoMs); }
+PerfilRuido perfil() { return PerfilRuido(); }
+void escuchar(uint32_t ms) { escuchaFalsa.activa = ms > 0; escuchaFalsa.progreso = 0; }
+Escucha escucha() { return escuchaFalsa; }
 }
 namespace ajustes { void cargar() {} void guardar() {} Ajustes& actual() { return ajustesFalsos; } }
 namespace teclado { void iniciar() {} bool leer(EventoTecla&) { return false; } bool presionada(Tecla t) { return teclaFalsa[t]; } }
@@ -60,6 +67,12 @@ namespace web {
 void arrancar() {} void detener() {} void atender() {}
 void permitirActualizacion(bool) {} Actualizacion actualizacion() { return otaFalsa; } void alAvanzar(void (*)()) {}
 void permitirCalibracion(bool) {} void confirmarFirmware() {}
+}
+namespace actualizador {
+void iniciar() {} void atender() {}
+void buscar() { actFalsa.estado = ACT_BUSCANDO; } void instalar() { actFalsa.estado = ACT_DESCARGANDO; }
+void descartar() { actFalsa.descartada = true; }
+bool ocupado() { return false; } InfoActualizador info() { return actFalsa; }
 }
 
 static void guardar(const char* nombre) {
@@ -87,6 +100,12 @@ static InfoRed conectada(const char* ssid, const char* ip, int8_t rssi, uint8_t 
 static Actualizacion ota(EstadoOta e, uint32_t restanteMs = 0, uint8_t porciento = 0, const char* error = "") {
   Actualizacion a; a.estado = e; a.hayLugar = true; a.restanteMs = restanteMs; a.porciento = porciento;
   snprintf(a.error, sizeof(a.error), "%s", error); return a;
+}
+
+static InfoActualizador servidor(EstadoActualizador e, const char* version = "", uint8_t porciento = 0, const char* error = "", const char* notas = "") {
+  InfoActualizador a; a.estado = e; a.hayLugar = true; a.porciento = porciento; a.tamano = 1318912;
+  snprintf(a.version, sizeof(a.version), "%s", version); snprintf(a.error, sizeof(a.error), "%s", error);
+  snprintf(a.notas, sizeof(a.notas), "%s", notas); return a;
 }
 
 static void tecla(Tecla t, TipoPulsacion tipo = PULSACION_CORTA) { EventoTecla e = { t, tipo }; ui::tecla(e); }
@@ -166,7 +185,8 @@ int main() {
   tecla(TECLA_OK);                                                   ui::refrescar(); guardar("30_conexion_opciones");
   tecla(TECLA_ABAJO); tecla(TECLA_OK);                               ui::refrescar(); guardar("31_conexion_olvidar_confirmar");
   otaFalsa = ota(OTA_ABIERTA, 272000);
-  tecla(TECLA_ABAJO); tecla(TECLA_OK);                               ui::refrescar(); guardar("32_firmware_permitido");
+  tecla(TECLA_ABAJO); tecla(TECLA_ABAJO); tecla(TECLA_OK);           // Olvidar -> Buscar version -> Subir firmware
+                                                                     ui::refrescar(); guardar("32_firmware_permitido");
   otaFalsa = ota(OTA_RECIBIENDO, 0, 47);                             ui::refrescar(); guardar("33_firmware_recibiendo");
   otaFalsa = ota(OTA_ERROR, 300000, 0, "Dañado o de otro chip");
                                                                      ui::refrescar(); guardar("34_firmware_error");
@@ -204,5 +224,53 @@ int main() {
   tecla(TECLA_ARRIBA); tecla(TECLA_ABAJO); tecla(TECLA_ABAJO); tecla(TECLA_OK);   // opciones -> Elegir pieza
                                                                      ui::refrescar(); guardar("48_contar_elegir_pieza");
   pesoFalso = Peso(); pesoFalso.hayCelda = true;                     ui::refrescar(); guardar("49_contar_sin_calibrar");
+
+  // ---- actualizacion desde el servidor ----
+  // Al arrancar: la bascula esta pesando y el servidor acaba de contestar que hay version nueva.
+  pesoFalso = peso(441.0f, true);
+  ui::tecla({ TECLA_MENU, PULSACION_LARGA });
+  actFalsa = servidor(ACT_DISPONIBLE, "0.6", 0, "", "Modo calorías y mejoras");
+                                                                     ui::refrescar(); guardar("50_actualizar_disponible");
+  tecla(TECLA_OK);                                                   // instalar
+  actFalsa = servidor(ACT_DESCARGANDO, "0.6", 63);                   ui::refrescar(); guardar("51_actualizar_descargando");
+  actFalsa = servidor(ACT_LISTA, "0.6", 100);                        ui::refrescar(); guardar("52_actualizar_lista");
+  actFalsa = servidor(ACT_ERROR, "0.6", 0, "No coincide la firma SHA-256");
+                                                                     ui::refrescar(); guardar("53_actualizar_error");
+  actFalsa = servidor(ACT_AL_DIA, "0.5");                            ui::refrescar(); guardar("54_actualizar_al_dia");
+  actFalsa = servidor(ACT_BUSCANDO);                                 ui::refrescar(); guardar("55_actualizar_buscando");
+  actFalsa = servidor(ACT_INACTIVA);                                 ui::refrescar(); guardar("56_actualizar_sin_wifi");
+  tecla(TECLA_MENU);                                                 // regresa a pesar
+
+  // "Ahora no": la oferta queda en Conexion como "Instalar v0.6"
+  actFalsa = servidor(ACT_DISPONIBLE, "0.6", 0, "", "Modo calorías y mejoras");
+  ui::refrescar(); tecla(TECLA_MENU);                                // la oferta aparece y se pospone
+  ui::refrescar();                                                   guardar("57_pesar_tras_posponer");
+  tecla(TECLA_MENU); tecla(TECLA_ABAJO); tecla(TECLA_OK);          // el menu recuerda Contar piezas -> Conexion
+  tecla(TECLA_OK); tecla(TECLA_ABAJO); tecla(TECLA_ABAJO);           // opciones -> Instalar v0.6
+                                                                     ui::refrescar(); guardar("58_conexion_instalar_pendiente");
+
+  // ---- afinar ruido ----
+  ui::tecla({ TECLA_MENU, PULSACION_LARGA }); tecla(TECLA_MENU);
+  for (int i = 0; i < 4; i++) tecla(TECLA_ABAJO);                    // el menu recuerda Conexion -> Afinar ruido
+  pesoFalso = peso(0, true);
+  lecturaFalsa = lectura(HX_OK, -52145, 10.4f, 120, true);
+  tecla(TECLA_OK);                                                   ui::refrescar(); guardar("59_afinar_paso1");
+  tecla(TECLA_OK);                                                   // escuchar
+  escuchaFalsa.progreso = 0.4f; escuchaFalsa.sigma = 55; escuchaFalsa.muestras = 24;
+                                                                     ui::refrescar(); guardar("60_afinar_escuchando");
+  escuchaFalsa.activa = false; escuchaFalsa.progreso = 1; escuchaFalsa.muestras = 60; escuchaFalsa.media = -52145;
+  ui::refrescar();                                                   // termina la escucha -> coloca un objeto
+                                                                     ui::refrescar(); guardar("61_afinar_poner_objeto");
+  lecturaFalsa = lectura(HX_OK, -112145, 10.4f, 150, false, 0.5f);   // el objeto se detecta solo
+  ui::refrescar(); relojFalsoMs += 700;                              ui::refrescar(); guardar("62_afinar_asentando");
+  lecturaFalsa.estable = true; lecturaFalsa.progresoEstable = 1;
+  ui::refrescar();                                                   // se asento: segunda escucha
+  escuchaFalsa.activa = false; escuchaFalsa.progreso = 1; escuchaFalsa.media = -112145;
+  ui::refrescar();                                                   // termina -> retira el objeto
+  lecturaFalsa = lectura(HX_OK, -52145, 10.4f, 150, false, 0.3f);
+  ui::refrescar(); relojFalsoMs += 1400;
+  lecturaFalsa.estable = true; lecturaFalsa.progresoEstable = 1;
+  ui::refrescar();                                                   // se asento: guarda el perfil
+                                                                     ui::refrescar(); guardar("63_afinar_listo");
   return 0;
 }

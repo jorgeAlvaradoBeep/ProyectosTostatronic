@@ -30,6 +30,7 @@ const Opcion OPCIONES[] = {
   { "Calibrar",      V_CALIBRAR },
   { "Ajustes",       V_AJUSTES },
   { "Diagnóstico",   V_DIAGNOSTICO },
+  { "Afinar ruido",  V_AFINAR },
 };
 const uint8_t N = sizeof(OPCIONES) / sizeof(OPCIONES[0]);
 const char*   NOMBRES[N];

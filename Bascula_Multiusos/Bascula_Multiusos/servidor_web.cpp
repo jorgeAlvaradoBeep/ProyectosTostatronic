@@ -11,6 +11,7 @@
 #include "bascula.h"
 #include "ajustes.h"
 #include "contador.h"
+#include "actualizador.h"
 #include "paginas.h"
 #include <WiFi.h>
 #include <WebServer.h>
@@ -57,7 +58,7 @@ struct Oyente {
 Oyente   oyentes[WEB_MAX_OYENTES];
 uint8_t  turnoOyente  = 0;         // a quien reemplazar si llega uno mas y no hay lugar
 uint32_t ultimoPesoMs = 0, ultimoEnvioMs = 0;
-char     pesoEnviado[560] = "";
+char     pesoEnviado[720] = "";
 
 // La Flash tiene DOS particiones de programa. Con una sola (Huge APP),
 // "la siguiente" es la misma que esta corriendo: escribir ahi borraria el
@@ -190,9 +191,11 @@ void rutaConectar() {
 void rutaEstado() {
   static const char* const REDES[] = { "apagada", "portal", "conectando", "conectada" };
   static const char* const OTAS[]  = { "cerrada", "abierta", "recibiendo", "lista", "error" };
+  static const char* const SRVS[]  = { "inactiva", "buscando", "al_dia", "disponible", "descargando", "lista", "error" };
 
-  InfoRed       r = red::info();
-  Actualizacion a = web::actualizacion();
+  InfoRed          r = red::info();
+  Actualizacion    a = web::actualizacion();
+  InfoActualizador s = actualizador::info();
 
   if (vienePorPortal()) {
     red::actividad();
@@ -201,7 +204,7 @@ void rutaEstado() {
 
   String json;
   json.reserve(480);
-  json += "{\"placa\":\"" NOMBRE_PLACA "\",\"version\":\"" PROYECTO_VERSION "\"";
+  json += "{\"placa\":\"" NOMBRE_PLACA "\",\"idPlaca\":\"" ID_PLACA "\",\"version\":\"" PROYECTO_VERSION "\"";
   json += ",\"ap\":\"" RED_AP_SSID "\",\"mdns\":\"" RED_NOMBRE_MDNS "\"";
   json += ",\"red\":\"";    json += REDES[r.estado];  json += '"';
   json += ",\"fallo\":";    json += siNo(r.fallo);
@@ -219,6 +222,12 @@ void rutaEstado() {
   json += ",\"otaLugar\":";     json += siNo(a.hayLugar);
   json += ",\"otaSegundos\":";  json += String(a.restanteMs / 1000);
   json += ",\"otaError\":\"" + escaparJson(a.error) + "\"";
+  // Actualizacion desde el servidor de Tostatronic (se instala desde la bascula)
+  json += ",\"srvEstado\":\"";   json += SRVS[s.estado]; json += '"';
+  json += ",\"srvVersion\":\"" + escaparJson(s.version) + "\"";
+  json += ",\"srvNotas\":\"" + escaparJson(s.notas) + "\"";
+  json += ",\"srvPorciento\":"; json += String(s.porciento);
+  json += ",\"srvError\":\"" + escaparJson(s.error) + "\"";
   json += '}';
 
   servidor.sendHeader("Cache-Control", "no-store");
@@ -236,19 +245,32 @@ void rutaOlvidar() {
  * el conteo de piezas y como va la calibracion desde la web. Los pesos van
  * en gramos; la pagina los pasa a la unidad elegida. */
 size_t armarPeso(char* destino, size_t tam) {
-  Peso   p = bascula::peso();
-  Conteo c = contador::contar(p);
+  Peso        p  = bascula::peso();
+  Conteo      c  = contador::contar(p);
+  Lectura     l  = bascula::leer();
+  PerfilRuido pr = bascula::perfil();
+
+  // Tiempo real: lo crudo, lo filtrado y lo mostrado, en gramos brutos (sin
+  // tara), para la grafica de la pagina. Sin calibrar van en 0.
+  float factor  = p.calibrada ? ajustes::actual().cal.factor : 0;
+  float crudoG  = factor ? p.brutoG + (l.crudo    - l.mostrado) / factor : 0;
+  float filtG   = factor ? p.brutoG + (l.filtrado - l.mostrado) / factor : 0;
+  float ppG     = factor ? l.ruidoPicoPico / fabsf(factor) : 0;
+  float sigmaG  = factor && pr.valido ? pr.sigmaCuentas / fabsf(factor) : 0;
 
   int n = snprintf(destino, tam,
     "{\"celda\":%s,\"cal\":%s,\"estable\":%s,\"sobre\":%s,\"conTara\":%s,"
     "\"neto\":%.2f,\"tara\":%.2f,\"bruto\":%.2f,\"div\":%.1f,\"cap\":%.0f,\"unidad\":%u,"
     "\"pz\":{\"activo\":%s,\"unit\":%.4f,\"n\":%ld,\"exacto\":%.2f,\"ambiguo\":%s,\"confiable\":%s,\"perfil\":%d,\"nombre\":\"%s\"},"
-    "\"calWeb\":{\"seg\":%lu,\"paso\":%u,\"min\":%lu}}",
+    "\"calWeb\":{\"seg\":%lu,\"paso\":%u,\"min\":%lu},"
+    "\"rt\":{\"crudo\":%.2f,\"filt\":%.2f,\"most\":%.2f,\"prog\":%.2f,\"pp\":%.2f,\"sps\":%.1f,\"sig\":%.3f,\"ven\":%u,\"asent\":%u}}",
     siNo(p.hayCelda), siNo(p.calibrada), siNo(p.estable), siNo(p.sobrecarga), siNo(p.conTara),
     p.netoG, p.taraG, p.brutoG, p.divisionG, p.capacidadG, (unsigned)ajustes::actual().unidad,
     siNo(c.activo), c.unitarioG, (long)c.piezas, c.exacto, siNo(c.ambiguo), siNo(c.confiable), c.perfil,
     escaparJson(c.nombre).c_str(),
-    (unsigned long)(calRestanteMs() / 1000), calPaso, (unsigned long)calPesoMinimoG());
+    (unsigned long)(calRestanteMs() / 1000), calPaso, (unsigned long)calPesoMinimoG(),
+    crudoG, filtG, p.brutoG, l.progresoEstable, ppG, l.muestrasPorSegundo, sigmaG,
+    (unsigned)(pr.valido ? pr.ventana : 0), (unsigned)(pr.valido ? pr.asentamientoMs : 0));
   return (n > 0 && (size_t)n < tam) ? (size_t)n : 0;
 }
 
@@ -518,6 +540,7 @@ void rutaSubida() {
     case UPLOAD_FILE_START:
       recibiendo = false;
       if (ota != OTA_ABIERTA && ota != OTA_ERROR) return;   // sin permiso: el archivo se ignora completo
+      if (actualizador::ocupado()) return;                  // ya esta llegando uno del servidor
       soltarOyentes();                                      // nada mas compite por el radio
       otaTotal     = servidor.clientContentLength();        // el archivo mas unos bytes del formulario
       otaRecibidos = 0;
@@ -639,6 +662,8 @@ void atender() {
 
 void permitirActualizacion(bool si) {
   if (ota == OTA_RECIBIENDO || ota == OTA_LISTA) return;
+  // Si la bascula esta bajando un firmware del servidor, no se recibe otro por la pagina.
+  if (si && actualizador::ocupado()) return;
   if (si && corriendo && hayLugarOta()) {
     ota         = OTA_ABIERTA;
     otaHastaMs  = millis() + OTA_VENTANA_MS;

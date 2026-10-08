@@ -12,8 +12,9 @@
  *               ESP32-C6 y al C5; el anillo es la intensidad de la
  *               senal. Sin red: a que red entrar con el telefono.
  *    OPCIONES   encender / apagar el WiFi, olvidar la red guardada,
- *               actualizar el firmware y permitir que la pagina web
- *               recalibre la bascula (5 minutos).
+ *               actualizar el firmware (desde la pagina web, o
+ *               buscandolo en el servidor de Tostatronic) y permitir
+ *               que la pagina web recalibre la bascula (5 minutos).
  *    FIRMWARE   abre por 5 minutos el permiso para recibir un
  *               firmware nuevo desde la pagina web, y muestra el
  *               avance. Al salir de aqui el permiso se cierra.
@@ -30,6 +31,7 @@
 #include "ui_comun.h"
 #include "red.h"
 #include "servidor_web.h"
+#include "actualizador.h"
 #include "prueba_wifi.h"
 
 namespace ui {
@@ -123,19 +125,29 @@ void refrescarInfo() {
 
 // ------------------ OPCIONES ------------------
 
-enum Opcion : uint8_t { O_WIFI, O_OLVIDAR, O_FIRMWARE, O_CALIBRAR_WEB };
+enum Opcion : uint8_t { O_WIFI, O_OLVIDAR, O_SERVIDOR, O_FIRMWARE, O_CALIBRAR_WEB };
 
-Opcion      opciones[4];
-const char* nombres[4];
+Opcion      opciones[5];
+const char* nombres[5];
+char        etiquetaServidor[24];    // "Instalar v0.5": se arma al vuelo
 uint8_t     n = 0, seleccion = 0;
 uint32_t    confirmarHastaMs = 0;    // "Olvidar red" pide un segundo OK
 
 void armarOpciones() {
+  InfoRed r = red::info();
   n = 0;
   opciones[n] = O_WIFI;
   nombres[n++] = red::encendida() ? "Apagar WiFi" : "Encender WiFi";
-  if (red::info().hayGuardada) { opciones[n] = O_OLVIDAR;  nombres[n++] = "Olvidar red"; }
-  if (red::encendida())        { opciones[n] = O_FIRMWARE; nombres[n++] = "Actualizar"; }
+  if (r.hayGuardada) { opciones[n] = O_OLVIDAR;  nombres[n++] = "Olvidar red"; }
+  if (r.estado == RED_CONECTADA) {
+    // Con internet: buscar en el servidor de Tostatronic. Si ya se sabe
+    // que hay una version nueva (la del arranque), la opcion lo dice.
+    InfoActualizador a = actualizador::info();
+    if (a.estado == ACT_DISPONIBLE) snprintf(etiquetaServidor, sizeof(etiquetaServidor), "Instalar v%s", a.version);
+    else                            strlcpy(etiquetaServidor, "Buscar versión", sizeof(etiquetaServidor));
+    opciones[n] = O_SERVIDOR; nombres[n++] = etiquetaServidor;
+  }
+  if (red::encendida())        { opciones[n] = O_FIRMWARE; nombres[n++] = "Subir firmware"; }
   if (red::encendida())        { opciones[n] = O_CALIBRAR_WEB; nombres[n++] = "Calibrar web"; }
   if (seleccion >= n) seleccion = 0;
 }
@@ -158,6 +170,14 @@ void elegir() {
       confirmarHastaMs = 0;
       red::olvidar();
       mostrar(P_INFO);
+      break;
+
+    case O_SERVIDOR:
+      // Si el arranque ya encontro la version nueva, se va directo a la
+      // oferta; si no, consulta ahora. MENU desde alla regresa aqui.
+      if (actualizador::info().estado != ACT_DISPONIBLE) actualizador::buscar();
+      vActualizar::regresarA(V_CONEXION);
+      irA(V_ACTUALIZAR);
       break;
 
     case O_FIRMWARE:

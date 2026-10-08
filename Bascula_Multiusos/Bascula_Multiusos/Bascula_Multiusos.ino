@@ -18,7 +18,10 @@
  *  codigo: abre la red "Tostatronic-Bascula" con un portal para
  *  elegir tu red desde el telefono. Ya conectada sirve una pagina
  *  con el peso en vivo, el contador de piezas y los ajustes, y el
- *  firmware se actualiza desde el navegador, sin cable.
+ *  firmware se actualiza desde el navegador, sin cable. Ademas, al
+ *  arrancar consulta el servidor de Tostatronic y, si hay una
+ *  version mas nueva para su placa, ofrece instalarla (ver
+ *  actualizador.h).
  *
  *  El WiFi es un extra: la bascula pesa completa sin el, y nada de
  *  la red detiene ni reinicia la placa.
@@ -40,7 +43,7 @@
  *  LIBRERIAS (Gestor de librerias del Arduino IDE)
  *  ------------------------------------------------------------
  *    GFX Library for Arduino (moononournation)  >= 1.6.5
- *    ArduinoJson (Benoit Blanchon)              >= 7   [desde la fase 5]
+ *    ArduinoJson (Benoit Blanchon)              >= 7   (lista de versiones del servidor)
  *    Core: esp32 de Espressif >= 3.3.0 (el C5 no existe antes)
  *
  *    NO uses TFT_eSPI: no compila para el ESP32-C6 con el core 3.x.
@@ -65,12 +68,14 @@
  *    pantalla.h/.cpp     capa propia sobre la libreria grafica
  *    hx711.h/.cpp        lectura del HX711 en seccion critica
  *    filtro.h            mediana + descarte de atipicos
+ *    ruido.h             del ruido medido a los parametros del filtro
  *    bascula.h/.cpp      tarea de muestreo, estabilidad, cero y tara
  *    ajustes.h/.cpp      calibracion y preferencias en NVS
  *    contador.h/.cpp     contador de piezas y sus perfiles
  *    teclado.h/.cpp      antirrebote y pulsacion corta / larga
  *    red.h/.cpp          WiFi: portal cautivo, red guardada, mDNS
  *    servidor_web.h/.cpp paginas, peso en vivo, ordenes y firmware
+ *    actualizador.h/.cpp firmware nuevo desde el servidor de Tostatronic
  *    paginas.h           el HTML, embebido (sin nada de internet)
  *    prueba_wifi.h/.cpp  radio transmitiendo, para el Diagnostico
  *    ui*.h/.cpp          lo que se ve en la pantalla redonda
@@ -88,6 +93,7 @@
 #include "prueba_wifi.h"
 #include "red.h"
 #include "servidor_web.h"
+#include "actualizador.h"
 #include "ui.h"
 
 const uint16_t REFRESCO_PANTALLA_MS = 100;   // 10 cuadros por segundo sobran para leer un numero
@@ -137,7 +143,7 @@ void setup() {
   Serial.println();
   Serial.println("=== " PROYECTO_NOMBRE " v" PROYECTO_VERSION " ===");
   Serial.println("Desarrollado por " PROYECTO_AUTOR " - " PROYECTO_ING " - " PROYECTO_WEB);
-  Serial.printf("Placa: %s  |  HX711 a %u SPS\n", NOMBRE_PLACA, HX_MUESTRAS_POR_SEGUNDO);
+  Serial.printf("Placa: %s (%s)  |  HX711 a %u SPS\n", NOMBRE_PLACA, ID_PLACA, HX_MUESTRAS_POR_SEGUNDO);
 
   if (!pantalla::iniciar()) {
     Serial.println("ERROR: la pantalla no inicio. Revisa el cableado SPI y config.h.");
@@ -152,8 +158,10 @@ void setup() {
 
   teclado::iniciar();
   bascula::configurar(a.cal, a.capacidadKg);
+  bascula::perfil(a.ruido);   // filtro afinado al ruido de esta celda (o el de fabrica)
   bascula::iniciar();     // desde aqui la celda se lee sola, en su propia tarea
   red::iniciar();         // el WiFi se conecta por debajo, mientras sale el logo
+  actualizador::iniciar();   // en cuanto conecte, pregunta al servidor si hay firmware nuevo
 
   ui::arranque(2500);
   ui::iniciar();
@@ -166,6 +174,7 @@ void loop() {
   // Portal, servidor web y estado del WiFi. Regresa de inmediato, salvo
   // mientras llega un firmware nuevo (la pantalla muestra el avance).
   red::atender();
+  actualizador::atender();   // consulta al conectar; reinicia cuando un firmware descargado ya se verifico
 
   uint32_t ahora = millis();
 

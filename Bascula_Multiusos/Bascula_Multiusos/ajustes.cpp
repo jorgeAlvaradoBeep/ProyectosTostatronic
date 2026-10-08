@@ -33,10 +33,16 @@ void cargar() {
   datos.unidad      = (Unidad)nvs.getUChar("unidad", UNIDAD_G);
   datos.pesoCalG    = nvs.getUInt("pesoCal", 500);
   datos.brillo      = nvs.getUChar("brillo", TFT_BRILLO);
+  datos.ruido.valido         = nvs.getBool("ruidoOk", false);
+  datos.ruido.sigmaCuentas   = nvs.getFloat("ruidoSig", 0);
+  datos.ruido.ventana        = nvs.getUChar("ruidoVen", 0);
+  datos.ruido.asentamientoMs = nvs.getUShort("ruidoAs", 0);
   nvs.end();
 
   // Nada de lo leido se usa a ciegas: un factor 0 o NaN dividiria entre cero.
   if (!(fabsf(datos.cal.factor) > 0.01f) || isnan(datos.cal.factor)) datos.cal.valida = false;
+  if (isnan(datos.ruido.sigmaCuentas) || datos.ruido.sigmaCuentas < 0 ||
+      datos.ruido.ventana < ruido::VENTANA_MIN || datos.ruido.ventana > ruido::VENTANA_MAX) datos.ruido.valido = false;
   if (!capacidadValida(datos.capacidadKg)) datos.capacidadKg = CELDAS[0].capacidadKg;
   if (datos.unidad >= NUM_UNIDADES) datos.unidad = UNIDAD_G;
 }
@@ -51,6 +57,10 @@ void guardar() {
   nvs.putUChar("unidad", datos.unidad);
   nvs.putUInt("pesoCal", datos.pesoCalG);
   nvs.putUChar("brillo", datos.brillo);
+  nvs.putBool("ruidoOk", datos.ruido.valido);
+  nvs.putFloat("ruidoSig", datos.ruido.sigmaCuentas);
+  nvs.putUChar("ruidoVen", datos.ruido.ventana);
+  nvs.putUShort("ruidoAs", datos.ruido.asentamientoMs);
   nvs.end();
 }
 

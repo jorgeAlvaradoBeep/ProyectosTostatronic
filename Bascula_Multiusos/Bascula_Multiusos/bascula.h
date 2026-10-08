@@ -32,11 +32,13 @@
 #pragma once
 #include <Arduino.h>
 #include "hx711.h"
+#include "ruido.h"
 
 struct Lectura {
   ResultadoHX estado        = HX_SIN_RESPUESTA;
   int32_t     crudo         = 0;   // ultima muestra valida, sin filtrar
   int32_t     filtrado      = 0;   // despues del filtro robusto (y del promedio largo si esta estable)
+  int32_t     mostrado      = 0;   // filtrado con retencion del ultimo digito: lo que va a la pantalla
   bool        estable       = false;
   float       progresoEstable = 0; // 0..1: cuanto falta para darlo por estable
   bool        doutAlAire    = false;  // DOUT suelto: se lee siempre "listo"
@@ -74,6 +76,16 @@ struct Peso {
   float  capacidadG      = 1000;
 };
 
+// Avance y resultado de una escucha (ver bascula::escuchar).
+struct Escucha {
+  bool     activa   = false;
+  float    progreso = 0;     // 0..1
+  uint32_t muestras = 0;
+  float    media    = 0;     // cuentas
+  float    sigma    = 0;     // desviacion estandar de las muestras crudas, en cuentas
+  int32_t  picoPico = 0;
+};
+
 namespace bascula {
 
 void iniciar();
@@ -81,6 +93,18 @@ void iniciar();
 // Calibracion y celda en uso. Reinicia el cero (al valor calibrado) y
 // quita la tara; el cero de arranque se vuelve a tomar al asentarse.
 void configurar(const Calibracion& cal, uint8_t capacidadKg);
+
+// Perfil de ruido aprendido (MENU > Afinar ruido): fija la ventana del
+// filtro, la banda de estabilidad y el promedio largo. Uno no valido
+// regresa a los valores de config.h.
+void        perfil(const PerfilRuido& p);
+PerfilRuido perfil();
+
+// Escucha la celda durante 'ms': acumula media, desviacion y pico a pico
+// de las muestras crudas. escucha() dice como va y, al terminar
+// (activa = false con muestras > 0), el resultado. escuchar(0) cancela.
+void    escuchar(uint32_t ms);
+Escucha escucha();
 
 // Copia consistente de la ultima lectura (segura entre tareas).
 Lectura leer();

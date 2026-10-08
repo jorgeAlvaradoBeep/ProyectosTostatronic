@@ -80,6 +80,7 @@ margin:8px auto 16px;animation:g 1s linear infinite}
 .dato span{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue)}
 .dato b{display:block;font:700 17px ui-monospace,Menlo,Consolas,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dato b.azul{color:var(--azul)}
+.dato.ancho b{white-space:normal;font-size:15px}
 .barra{height:10px;border-radius:5px;background:var(--borde);overflow:hidden;margin:14px 0 8px}
 .barra i{display:block;height:100%;width:0;background:var(--verde);transition:width .2s}
 ol{margin:8px 0 0 20px;color:var(--tenue);font-size:14px}
@@ -109,6 +110,17 @@ border:1px solid var(--borde);font-weight:600}
 .pieza.activa{border-color:var(--azul)}
 .pieza small{display:block;font-weight:400;color:var(--tenue)}
 button.mini{width:auto;padding:6px 10px;font-size:13px;border-radius:8px}
+.pantalla{display:flex;justify-content:center;margin-bottom:12px}
+.anillo{width:240px;height:240px;border-radius:50%;background:conic-gradient(var(--borde) 0deg,var(--borde) 0deg);
+display:flex;align-items:center;justify-content:center}
+.cara{width:220px;height:220px;border-radius:50%;background:var(--fondo);display:flex;flex-direction:column;
+align-items:center;justify-content:center;text-align:center;gap:2px}
+.vNumero{font-size:52px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.vNumero.texto{font-size:22px;line-height:2.6}
+#grafica{width:100%;height:180px;display:block;background:var(--tarjeta);border:1px solid var(--borde);border-radius:16px;margin-bottom:8px}
+.leyenda{display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--tenue);margin-bottom:12px}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.l1{background:#56687a}.l2{background:var(--azul)}.l3{background:var(--texto)}
 [hidden]{display:none!important}
 )CSS";
 
@@ -288,6 +300,7 @@ const char PAGINA_BASCULA[] PROGMEM = R"HTML(<!DOCTYPE html>
 <header><span class="marca">TOSTATRONIC</span><span id="placa" class="modelo">BÁSCULA MULTIUSOS</span></header>
 <nav class="pestanas">
   <button data-v="vBascula" class="on">Báscula</button>
+  <button data-v="vVivo">Tiempo real</button>
   <button data-v="vPiezas">Piezas</button>
   <button data-v="vAjustes">Ajustes</button>
 </nav>
@@ -304,6 +317,25 @@ const char PAGINA_BASCULA[] PROGMEM = R"HTML(<!DOCTYPE html>
     <div class="dos"><button id="btnTara">Tara</button><button id="btnCero" class="borde">Cero</button></div>
     <h2>Unidad</h2>
     <div id="unidades" class="chips"><button data-u="0">g</button><button data-u="1">kg</button><button data-u="2">oz</button></div>
+  </section>
+
+  <section id="vVivo" hidden>
+    <div class="pantalla"><div id="vAnillo" class="anillo"><div class="cara">
+      <p id="vTitulo" class="rotulo">PESO</p>
+      <p id="vNumero" class="vNumero">–</p>
+      <p id="vUnidad" class="unidadGrande"></p>
+      <p id="vEstado" class="estadoPeso">conectando…</p>
+    </div></div></div>
+    <canvas id="grafica"></canvas>
+    <div class="leyenda"><span><i class="l1"></i>crudo</span><span><i class="l2"></i>filtrado</span><span><i class="l3"></i>pantalla</span></div>
+    <div class="datos">
+      <div class="dato"><span>Crudo</span><b id="rCrudo">–</b></div>
+      <div class="dato"><span>Filtrado</span><b id="rFilt">–</b></div>
+      <div class="dato"><span>Ruido (pico a pico)</span><b id="rPP">–</b></div>
+      <div class="dato"><span>Muestras / s</span><b id="rSps">–</b></div>
+      <div class="dato ancho"><span>Filtro</span><b id="rPerfil">–</b></div>
+    </div>
+    <p class="chico">Lo mismo que ve la báscula, cinco veces por segundo. La línea blanca es lo que muestra la pantalla; la azul, el filtro; la gris, cada muestra del HX711. Para ajustar los filtros al ruido de tu celda: <b>MENÚ → Afinar ruido</b>.</p>
   </section>
 
   <section id="vPiezas" hidden>
@@ -349,6 +381,7 @@ const char PAGINA_BASCULA[] PROGMEM = R"HTML(<!DOCTYPE html>
       <div class="dato"><span>Canal</span><b id="dCanal">–</b></div>
       <div class="dato ancho"><span>Dirección</span><b id="dIp">–</b></div>
       <div class="dato ancho"><span>Firmware</span><b id="dVersion">–</b></div>
+      <div class="dato ancho"><span>Servidor</span><b id="dServidor">–</b></div>
     </div>
 
     <div class="tarjeta">
@@ -472,6 +505,50 @@ function pintar(){
   $('btnCalCarga').disabled=!(abierto&&c.paso===1);
   $('btnCalCero').textContent=(c.paso===1?'✓ Cero tomado · repetir':'1 · Tomar el cero (plato vacío)');
   $('calGramos').min=c.min;$('calGramos').max=e.cap;
+
+  pintarVivo();
+}
+
+// ---- tiempo real: replica de la pantalla redonda y grafica ----
+// Cada evento trae crudo, filtrado y mostrado en gramos brutos; se guardan
+// los ultimos 30 s (5 por segundo) y se dibujan solo si la pestana se ve.
+const hist=[], HIST_MAX=150;
+function pintarVivo(){
+  const rt=e.rt;if(!rt)return;
+  hist.push({c:rt.crudo,f:rt.filt,m:rt.most});if(hist.length>HIST_MAX)hist.shift();
+  if($('vVivo').hidden)return;
+  const listo=e.celda&&e.cal&&!e.sobre;
+  poner('vTitulo',e.conTara?'NETO':'PESO','rotulo'+(e.conTara?' alerta':''));
+  if(!e.celda)poner('vNumero','SIN CELDA','vNumero texto mal');
+  else if(!e.cal)poner('vNumero','SIN CALIBRAR','vNumero texto alerta');
+  else if(e.sobre)poner('vNumero','SOBRECARGA','vNumero texto mal');
+  else poner('vNumero',fmt(e.neto),'vNumero');
+  poner('vUnidad',listo?UNIDADES[e.unidad]:'');
+  poner('vEstado',!listo?'':e.estable?'● ESTABLE':'midiendo…','estadoPeso'+(e.estable?' bien':''));
+  const g=e.estable?360:Math.round(rt.prog*360), col=e.estable?'var(--verde)':'var(--ambar)';
+  $('vAnillo').style.background='conic-gradient('+col+' '+g+'deg,var(--borde) '+g+'deg)';
+  poner('rCrudo',e.cal?rt.crudo.toFixed(2)+' g':'–');
+  poner('rFilt',e.cal?rt.filt.toFixed(2)+' g':'–');
+  poner('rPP',e.cal?'±'+(rt.pp/2).toFixed(2)+' g':'–');
+  poner('rSps',rt.sps.toFixed(1));
+  poner('rPerfil',rt.ven?rt.ven+' muestras · ruido ±'+rt.sig.toFixed(2)+' g · se asienta en '+(rt.asent/1000).toFixed(1)+' s':'de fábrica (sin afinar)');
+  dibujar();
+}
+function dibujar(){
+  const cv=$('grafica'),dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  if(!W||!H)return;
+  if(cv.width!==Math.round(W*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);}
+  const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+  if(hist.length<2||!e.cal)return;
+  let mn=Infinity,mx=-Infinity;
+  for(const h of hist){mn=Math.min(mn,h.c,h.f,h.m);mx=Math.max(mx,h.c,h.f,h.m);}
+  const mid=(mx+mn)/2,span=Math.max(mx-mn,4*e.div)*1.15;mn=mid-span/2;mx=mid+span/2;
+  const X=i=>46+(W-54)*i/(HIST_MAX-1),Y=v=>H-12-(H-24)*(v-mn)/(mx-mn);
+  x.font='11px system-ui';x.fillStyle='#93A1AA';x.strokeStyle='#2A353F';x.lineWidth=1;
+  for(let k=0;k<=4;k++){const v=mn+(mx-mn)*k/4,y=Y(v);x.beginPath();x.moveTo(46,y);x.lineTo(W-8,y);x.stroke();x.fillText(v.toFixed(e.div<1?2:1),4,y+4);}
+  const serie=(k,c,w)=>{x.strokeStyle=c;x.lineWidth=w;x.beginPath();
+    hist.forEach((h,i)=>{const px=X(i+HIST_MAX-hist.length),py=Y(h[k]);i?x.lineTo(px,py):x.moveTo(px,py);});x.stroke();};
+  serie('c','#56687a',1);serie('f','#4BA8F5',1.5);serie('m','#F3F6F4',2);
 }
 
 // ---- piezas guardadas ----
@@ -513,6 +590,13 @@ function refrescarConexion(){
     nombreAp=j.ap;
     $('placa').textContent=j.placa.toUpperCase();
     $('dVersion').textContent='v'+j.version+' · '+j.placa;
+    // Lo que dijo el servidor de Tostatronic al arrancar. Instalar es desde la báscula.
+    const srv={inactiva:'sin consultar (no hay internet)',buscando:'consultando…',al_dia:'al día (v'+j.srvVersion+')',
+      disponible:'nueva v'+j.srvVersion+(j.srvNotas?' · '+j.srvNotas:'')+' — instálala en la báscula: MENÚ → Conexión → Instalar',
+      descargando:'descargando v'+j.srvVersion+'… '+j.srvPorciento+' %',lista:'v'+j.srvVersion+' instalada, reiniciando…',
+      error:'no se pudo: '+j.srvError};
+    $('dServidor').textContent=srv[j.srvEstado]||'–';
+    $('dServidor').className=j.srvEstado==='disponible'?'azul':'';
     if(j.red!=='conectada'){$('dRed').textContent='sin WiFi: usando la red de la báscula';return;}
     $('dRed').textContent=j.ssid;
     $('dEstandar').textContent=j.estandar+(j.norma&&j.norma!==j.estandar?' · '+j.norma:'');
@@ -526,8 +610,9 @@ function refrescarConexion(){
 // ---- botones ----
 document.querySelectorAll('.pestanas button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.pestanas button').forEach(x=>x.className=(x===b)?'on':'');
-  ['vBascula','vPiezas','vAjustes'].forEach(v=>$(v).hidden=(v!==b.dataset.v));
+  ['vBascula','vVivo','vPiezas','vAjustes'].forEach(v=>$(v).hidden=(v!==b.dataset.v));
   aviso('');
+  if(b.dataset.v==='vVivo'&&e)pintarVivo();
   if(b.dataset.v==='vPiezas')cargarPiezas();
   if(b.dataset.v==='vAjustes')refrescarConexion();
 });

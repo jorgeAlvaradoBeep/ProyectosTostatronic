@@ -34,7 +34,7 @@
 
 namespace ui {
 
-enum Vista : uint8_t { V_PESAR, V_MENU, V_CONTAR, V_CONEXION, V_CALIBRAR, V_AJUSTES, V_DIAGNOSTICO };
+enum Vista : uint8_t { V_PESAR, V_MENU, V_CONTAR, V_CONEXION, V_CALIBRAR, V_AJUSTES, V_DIAGNOSTICO, V_ACTUALIZAR, V_AFINAR };
 void irA(Vista v);
 
 // ------------------ zonas de texto ------------------
@@ -102,5 +102,8 @@ namespace vDiagnostico { void entrar(); void tecla(const EventoTecla& e); void r
 namespace vCalibrar    { void entrar(bool primerArranque); void tecla(const EventoTecla& e); void refrescar(); }
 // salir(): la unica vista que deja algo abierto (el permiso para recibir firmware).
 namespace vConexion    { void entrar(); void tecla(const EventoTecla& e); void refrescar(); void salir(); }
+// regresarA(): a que vista vuelve MENU (al pesar si la ofrecio el arranque; a Conexion si vino del menu).
+namespace vActualizar  { void entrar(); void tecla(const EventoTecla& e); void refrescar(); void regresarA(Vista v); }
+namespace vAfinar      { void entrar(); void tecla(const EventoTecla& e); void refrescar(); }
 
 }  // namespace ui
