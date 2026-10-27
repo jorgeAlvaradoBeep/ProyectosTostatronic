@@ -14,7 +14,7 @@ productos de [tostatronic.com](https://www.tostatronic.com). Todo es libre:
 | [Timer_LM555](Timer_LM555/) | Oscilador astable con LM555, con y sin potenciómetro | — (sin microcontrolador) |
 | [Contador_74LS48](Contador_74LS48/) | Contador 0–9: display de cátodo común manejado con 4 GPIO y el decodificador 74LS48 | ESP32 · ESP32-S3 |
 | [Display_7_Segmentos](Display_7_Segmentos/) | Cátodo común vs ánodo común: diferencia, cómo identificarlo y con qué usarlo | — |
-| [ESP32_CAM_MOSFET_Gestos](ESP32_CAM_MOSFET_Gestos/) | Pulgar arriba / abajo frente a la cámara: Python (MediaPipe) enciende un LED de 12 V con 74LS07 + IRFZ44N | ESP32-WROVER-CAM |
+| [ESP32_CAM_MOSFET_Gestos](ESP32_CAM_MOSFET_Gestos/) | Pulgar arriba / puño cerrado frente a la cámara: Python (MediaPipe) enciende un LED de 12 V con 74LS07 + IRFZ44N | ESP32-WROVER-CAM |
 
 Cada carpeta tiene su propio README con conexiones, lista de materiales y
 explicación.

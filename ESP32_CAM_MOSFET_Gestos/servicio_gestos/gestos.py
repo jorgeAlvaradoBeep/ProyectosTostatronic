@@ -6,7 +6,7 @@ Lee el video de la ESP32-WROVER-CAM por WiFi, reconoce tus señas con
 MediaPipe y prende o apaga la carga del circuito:
 
     pulgar arriba  ->  GET http://<camara>/carga?estado=1  ->  LED encendido
-    pulgar abajo   ->  GET http://<camara>/carga?estado=0  ->  LED apagado
+    puño cerrado   ->  GET http://<camara>/carga?estado=0  ->  LED apagado
 
     ESP32 GPIO33 -> 74LS07 -> pull-up a 12 V -> IRFZ44N -> modulo LED 12 V
 
@@ -35,7 +35,8 @@ MODELO = os.path.join(AQUI, "modelos", "gesture_recognizer.task")
 MODELO_URL = ("https://storage.googleapis.com/mediapipe-models/gesture_recognizer/"
               "gesture_recognizer/float16/latest/gesture_recognizer.task")
 
-ENCENDER, APAGAR = "Thumb_Up", "Thumb_Down"
+# El pulgar abajo se reconoce peor con la ESP32-CAM; el puño cerrado es mucho más estable.
+ENCENDER, APAGAR = "Thumb_Up", "Closed_Fist"
 
 # Colores (BGR), los mismos de la pagina de la camara
 FONDO = (25, 21, 16)
@@ -199,9 +200,13 @@ def texto(img, t, org, escala, color, grosor=2, centro=False):
 
 
 def pulgar(img, c, r, arriba, color):
-    """Icono: circulo con flecha arriba/abajo (OpenCV no dibuja emojis)."""
+    """Icono (OpenCV no dibuja emojis): flecha arriba = encender, puño (cuadro redondeado) = apagar."""
     cv2.circle(img, c, r, color, -1, cv2.LINE_AA)
     x, y = c
+    if not arriba:
+        a = int(r * 0.45)
+        cv2.rectangle(img, (x - a, y - a), (x + a, y + a), FONDO, -1, cv2.LINE_AA)
+        return
     s = -1 if arriba else 1                       # -1 = la punta va hacia arriba
     flecha = [(0, 0.6), (-0.45, 0.05), (-0.17, 0.05), (-0.17, -0.55), (0.17, -0.55), (0.17, 0.05), (0.45, 0.05)]
     pts = np.array([(x + dx * r, y + s * dy * r) for dx, dy in flecha], np.int32)
@@ -220,7 +225,7 @@ def recuadro(vid, pts, gesto, score):
     for cx, cy, dx, dy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
         cv2.line(vid, (cx, cy), (cx + dx * L, cy), color, 6, cv2.LINE_AA)
         cv2.line(vid, (cx, cy), (cx, cy + dy * L), color, 6, cv2.LINE_AA)
-    etiqueta = {ENCENDER: "PULGAR ARRIBA", APAGAR: "PULGAR ABAJO"}.get(gesto, "MANO")
+    etiqueta = {ENCENDER: "PULGAR ARRIBA", APAGAR: "MANO CERRADA"}.get(gesto, "MANO")
     if gesto:
         etiqueta += f"  {score * 100:.0f}%"
     (tw, th), _ = cv2.getTextSize(etiqueta, cv2.FONT_HERSHEY_DUPLEX, 0.7, 2)
@@ -287,7 +292,7 @@ def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=96
         texto(lienzo, "encender", (125, y + 92), 0.7, TENUE, 1)
     elif gesto == APAGAR:
         pulgar(lienzo, (70, y + 62), 38, False, NARANJA)
-        texto(lienzo, "PULGAR ABAJO", (125, y + 58), 1.1, NARANJA)
+        texto(lienzo, "MANO CERRADA", (125, y + 58), 1.1, NARANJA)
         texto(lienzo, "apagar", (125, y + 92), 0.7, TENUE, 1)
     else:
         texto(lienzo, "Muestra tu mano a la camara", (30, y + 70), 0.9, TENUE, 1)
@@ -314,7 +319,7 @@ def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=96
 # ------------------------------------------------------------------ principal
 
 def main():
-    ap = argparse.ArgumentParser(description="Prende y apaga la carga de la ESP32 con pulgar arriba / abajo.")
+    ap = argparse.ArgumentParser(description="Prende la carga de la ESP32 con el pulgar arriba y la apaga con el puño cerrado.")
     ap.add_argument("--cam", default="tostacam.local", help="IP o nombre de la ESP32, opcional :puerto (default: tostacam.local)")
     ap.add_argument("--puerto-stream", type=int, default=81, help="puerto del video MJPEG (default: 81)")
     ap.add_argument("--fuente", help="probar sin ESP32: indice de webcam (0) o archivo de video")
@@ -334,7 +339,7 @@ def main():
 
     candidato, desde, ultimo_ts = None, 0.0, 0
     fps, t_fps, n_fps = 0.0, time.time(), 0
-    print("Listo. Pulgar arriba = encender, pulgar abajo = apagar.  (Q para salir)")
+    print("Listo. Pulgar arriba = encender, puño cerrado = apagar.  (Q para salir)")
 
     while True:
         img = lector.leer()
