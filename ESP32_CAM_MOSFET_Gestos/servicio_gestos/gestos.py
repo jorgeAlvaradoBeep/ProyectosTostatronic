@@ -124,11 +124,14 @@ class Carga:
     def __init__(self, host, simular):
         self.base, self.simular = f"http://{host}", simular
         self.encendida, self.error = False, ""
+        self.evento = None    # ultimo comando: {"encender", "t", "estado": enviando|ok|error, "ms"} (para la pantalla)
         threading.Thread(target=self._pedir, args=(None,), daemon=True).start()   # estado inicial
 
     def poner(self, encender):
+        self.evento = {"encender": encender, "t": time.monotonic(), "estado": "enviando", "ms": 0}
         if self.simular:
             self.encendida = encender
+            self.evento.update(estado="ok")
             print(f"[carga] (simulada) {'ENCENDIDA' if encender else 'apagada'}")
             return
         threading.Thread(target=self._pedir, args=(encender,), daemon=True).start()
@@ -137,14 +140,20 @@ class Carga:
         if self.simular:
             return
         url = self.base + "/carga" + ("" if encender is None else f"?estado={int(encender)}")
+        evento, t0 = self.evento, time.monotonic()
         try:
-            with urllib.request.urlopen(url, timeout=2) as r:
+            with urllib.request.urlopen(url, timeout=6) as r:
                 self.encendida = b"true" in r.read()
                 self.error = ""
             if encender is not None:
-                print(f"[carga] {'ENCENDIDA' if self.encendida else 'apagada'}")
+                ms = int((time.monotonic() - t0) * 1000)
+                if evento:
+                    evento.update(estado="ok", ms=ms)
+                print(f"[carga] {'ENCENDIDA' if self.encendida else 'apagada'} ({ms} ms)")
         except Exception as e:
             self.error = "sin respuesta de la ESP32"
+            if encender is not None and evento:
+                evento.update(estado="error")
             print(f"[carga] {url} fallo: {e}")
 
 
@@ -199,7 +208,53 @@ def pulgar(img, c, r, arriba, color):
     cv2.fillPoly(img, [pts], FONDO, cv2.LINE_AA)
 
 
-def dibujar(img, mano, gesto, avance, carga, conectado, fps, ancho=960):
+def recuadro(vid, pts, gesto, score):
+    """Recuadro de deteccion alrededor de la mano, con el gesto y su confianza."""
+    h, w = vid.shape[:2]
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    m = 28
+    x0, y0, x1, y1 = max(min(xs) - m, 2), max(min(ys) - m, 2), min(max(xs) + m, w - 3), min(max(ys) + m, h - 3)
+    color = {ENCENDER: VERDE, APAGAR: NARANJA}.get(gesto, BLANCO)
+    cv2.rectangle(vid, (x0, y0), (x1, y1), color, 2, cv2.LINE_AA)
+    L = max(18, min(x1 - x0, y1 - y0) // 4)                       # esquinas gruesas
+    for cx, cy, dx, dy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
+        cv2.line(vid, (cx, cy), (cx + dx * L, cy), color, 6, cv2.LINE_AA)
+        cv2.line(vid, (cx, cy), (cx, cy + dy * L), color, 6, cv2.LINE_AA)
+    etiqueta = {ENCENDER: "PULGAR ARRIBA", APAGAR: "PULGAR ABAJO"}.get(gesto, "MANO")
+    if gesto:
+        etiqueta += f"  {score * 100:.0f}%"
+    (tw, th), _ = cv2.getTextSize(etiqueta, cv2.FONT_HERSHEY_DUPLEX, 0.7, 2)
+    ty = y0 - 10 if y0 - th - 18 > 0 else y1 + th + 16
+    cv2.rectangle(vid, (x0, ty - th - 10), (x0 + tw + 16, ty + 8), color, -1)
+    cv2.putText(vid, etiqueta, (x0 + 8, ty), cv2.FONT_HERSHEY_DUPLEX, 0.7, FONDO, 2, cv2.LINE_AA)
+
+
+def aviso_comando(vid, ev):
+    """Banda arriba del video cuando se manda el comando a la ESP32 (dura 3 s) + destello del borde."""
+    edad = time.monotonic() - ev["t"]
+    if edad > 3:
+        return
+    h, w = vid.shape[:2]
+    color = VERDE if ev["encender"] else NARANJA
+    if edad < 0.6:
+        cv2.rectangle(vid, (0, 0), (w - 1, h - 1), color, 10)
+    capa = vid.copy()
+    cv2.rectangle(capa, (0, 0), (w, 96), FONDO, -1)
+    cv2.addWeighted(capa, 0.78, vid, 0.22, 0, vid)
+    accion = "ENCENDER" if ev["encender"] else "APAGAR"
+    texto(vid, f"COMANDO: {accion}", (20, 40), 1.0, color, 2)
+    texto(vid, f"GET /carga?estado={int(ev['encender'])}", (20, 78), 0.65, BLANCO, 1)
+    if ev["estado"] == "enviando":
+        estado, c = "enviando...", TENUE
+    elif ev["estado"] == "ok":
+        estado, c = (f"OK  ESP32 respondio en {ev['ms']} ms" if ev["ms"] else "OK"), VERDE
+    else:
+        estado, c = "SIN RESPUESTA", NARANJA
+    (tw, _), _ = cv2.getTextSize(estado, cv2.FONT_HERSHEY_DUPLEX, 0.7, 2)
+    texto(vid, estado, (w - tw - 20, 78), 0.7, c, 2)
+
+
+def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=960):
     h0, w0 = img.shape[:2]
     alto = int(ancho * h0 / w0)
     vid = cv2.resize(img, (ancho, alto))
@@ -209,6 +264,9 @@ def dibujar(img, mano, gesto, avance, carga, conectado, fps, ancho=960):
             cv2.line(vid, pts[a], pts[b], BLANCO, 3, cv2.LINE_AA)
         for p in pts:
             cv2.circle(vid, p, 6, AMBAR, -1, cv2.LINE_AA)
+        recuadro(vid, pts, gesto, score)
+    if carga.evento:
+        aviso_comando(vid, carga.evento)
 
     barra, pie = 64, 150
     lienzo = np.full((alto + barra + pie, ancho, 3), FONDO, np.uint8)
@@ -297,13 +355,13 @@ def main():
         ultimo_ts = ts
         res = reconocedor.recognize_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), ts)
 
-        gesto, mano = None, None
+        gesto, mano, score = None, None, 0.0
         if res.hand_landmarks:
             mano = res.hand_landmarks[0]
             if res.gestures and res.gestures[0]:
                 g = res.gestures[0][0]
                 if g.category_name in (ENCENDER, APAGAR) and g.score >= a.umbral:
-                    gesto = g.category_name
+                    gesto, score = g.category_name, g.score
 
         # La seña tiene que sostenerse: un pulgar a medio movimiento no dispara nada.
         ahora = time.monotonic()
@@ -321,7 +379,7 @@ def main():
 
         if a.sin_ventana:
             continue
-        cv2.imshow("Tostatronic - Gestos", dibujar(img, mano, gesto, avance, carga, lector.conectado, fps))
+        cv2.imshow("Tostatronic - Gestos", dibujar(img, mano, gesto, avance, carga, lector.conectado, fps, score))
         tecla = cv2.waitKey(1) & 0xFF
         if tecla in (ord("q"), 27):
             break
