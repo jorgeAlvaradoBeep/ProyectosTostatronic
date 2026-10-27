@@ -106,7 +106,7 @@ const uint32_t PULSACION_BOOT_MS = 3000;
 const bool VOLTEO_VERTICAL    = false;
 const bool ESPEJO_HORIZONTAL  = false;
 
-const uint8_t CALIDAD_JPEG = 12;   // 10 = mejor imagen ... 63 = mas compresion
+const uint8_t CALIDAD_JPEG = 15;   // 10 = mejor imagen ... 63 = mas compresion (15: cuadros mas ligeros para el WiFi)
 
 // Pines de la OV2640 en la ESP32-WROVER-CAM (mismo mapa que la
 // WROVER-KIT de Espressif). PWDN y RESET no estan cableados.
@@ -141,6 +141,7 @@ struct Resolucion {
 // cabe en la RAM interna (para eso son los 4 MB de PSRAM).
 const Resolucion RESOLUCIONES[] = {
   { "qvga", "QVGA", FRAMESIZE_QVGA,  320,  240 },
+  { "hvga", "HVGA", FRAMESIZE_HVGA,  480,  320 },
   { "vga",  "VGA",  FRAMESIZE_VGA,   640,  480 },
   { "svga", "SVGA", FRAMESIZE_SVGA,  800,  600 },
   { "xga",  "XGA",  FRAMESIZE_XGA,  1024,  768 },
@@ -148,8 +149,8 @@ const Resolucion RESOLUCIONES[] = {
 };
 
 const uint8_t NUM_RESOLUCIONES = sizeof(RESOLUCIONES) / sizeof(RESOLUCIONES[0]);
-const uint8_t RES_INICIAL      = 1;   // VGA: buen balance entre nitidez y cuadros por segundo
-const uint8_t RES_TOPE_SIN_PSRAM = 2; // SVGA
+const uint8_t RES_INICIAL      = 1;   // HVGA: suficiente para reconocer la mano y mas fluido por WiFi
+const uint8_t RES_TOPE_SIN_PSRAM = 3; // SVGA
 
 uint8_t resMaxima = NUM_RESOLUCIONES - 1;
 volatile uint8_t resActual = RES_INICIAL;
