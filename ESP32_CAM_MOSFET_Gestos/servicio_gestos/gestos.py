@@ -2,8 +2,13 @@
 Servicio de gestos - Tostatronic (www.tostatronic.com)
 =======================================================
 
-Lee el video de la ESP32-WROVER-CAM por WiFi, reconoce tus señas con
-MediaPipe y prende o apaga la carga del circuito:
+Lee el video de la ESP32-WROVER-CAM por WiFi, detecta tu mano con MediaPipe
+y prende o apaga la carga del circuito.
+
+Modo "mano" (por defecto): cada vez que muestras la mano, la carga cambia de
+estado (encendido <-> apagado). Retira la mano para el siguiente cambio.
+
+Modo "gestos" (--modo gestos):
 
     pulgar arriba  ->  GET http://<camara>/carga?estado=1  ->  LED encendido
     puño cerrado   ->  GET http://<camara>/carga?estado=0  ->  LED apagado
@@ -176,8 +181,8 @@ def crear_reconocedor(umbral):
         base_options=mp_python.BaseOptions(model_asset_path=asegurar_modelo()),
         running_mode=vision.RunningMode.VIDEO,
         num_hands=1,
-        min_hand_detection_confidence=0.5,
-        min_hand_presence_confidence=0.5,
+        min_hand_detection_confidence=0.4,     # a 320x240 la mano se ve chica: un poco mas permisivo
+        min_hand_presence_confidence=0.4,
         min_tracking_confidence=0.5,
         canned_gesture_classifier_options=mp_python.components.processors.ClassifierOptions(score_threshold=umbral),
     )
@@ -216,7 +221,7 @@ def pulgar(img, c, r, arriba, color):
     cv2.fillPoly(img, [pts], FONDO, cv2.LINE_AA)
 
 
-def recuadro(vid, pts, gesto, score):
+def recuadro(vid, pts, gesto, score, etiqueta=None):
     """Recuadro de deteccion alrededor de la mano, con el gesto y su confianza."""
     h, w = vid.shape[:2]
     xs, ys = [p[0] for p in pts], [p[1] for p in pts]
@@ -228,8 +233,9 @@ def recuadro(vid, pts, gesto, score):
     for cx, cy, dx, dy in ((x0, y0, 1, 1), (x1, y0, -1, 1), (x0, y1, 1, -1), (x1, y1, -1, -1)):
         cv2.line(vid, (cx, cy), (cx + dx * L, cy), color, 6, cv2.LINE_AA)
         cv2.line(vid, (cx, cy), (cx, cy + dy * L), color, 6, cv2.LINE_AA)
-    etiqueta = {ENCENDER: "PULGAR ARRIBA", APAGAR: "MANO CERRADA"}.get(gesto, "MANO")
-    if gesto:
+    if etiqueta is None:
+        etiqueta = {ENCENDER: "PULGAR ARRIBA", APAGAR: "MANO CERRADA"}.get(gesto, "MANO")
+    if gesto and score:
         etiqueta += f"  {score * 100:.0f}%"
     (tw, th), _ = cv2.getTextSize(etiqueta, cv2.FONT_HERSHEY_DUPLEX, 0.7, 2)
     ty = y0 - 10 if y0 - th - 18 > 0 else y1 + th + 16
@@ -262,7 +268,7 @@ def aviso_comando(vid, ev):
     texto(vid, estado, (w - tw - 20, 78), 0.7, c, 2)
 
 
-def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=960):
+def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=960, modo="gestos", armado=True):
     h0, w0 = img.shape[:2]
     alto = int(ancho * h0 / w0)
     vid = cv2.resize(img, (ancho, alto))
@@ -272,7 +278,7 @@ def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=96
             cv2.line(vid, pts[a], pts[b], BLANCO, 3, cv2.LINE_AA)
         for p in pts:
             cv2.circle(vid, p, 6, AMBAR, -1, cv2.LINE_AA)
-        recuadro(vid, pts, gesto, score)
+        recuadro(vid, pts, gesto, score, "MANO DETECTADA" if modo == "mano" else None)
     if carga.evento:
         aviso_comando(vid, carga.evento)
 
@@ -289,7 +295,16 @@ def dibujar(img, mano, gesto, avance, carga, conectado, fps, score=0.0, ancho=96
 
     # gesto detectado
     y = barra + alto
-    if gesto == ENCENDER:
+    if modo == "mano" and mano:
+        accion = "encender" if gesto == ENCENDER else "apagar"
+        c = VERDE if gesto == ENCENDER else NARANJA
+        pulgar(lienzo, (70, y + 62), 38, gesto == ENCENDER, c)
+        texto(lienzo, "MANO DETECTADA", (125, y + 58), 1.1, c)
+        texto(lienzo, f"sostenla para {accion}" if armado else "retira la mano para el siguiente cambio",
+              (125, y + 92), 0.7, TENUE, 1)
+    elif modo == "mano":
+        texto(lienzo, "Muestra tu mano: enciende / apaga", (30, y + 70), 0.9, TENUE, 1)
+    elif gesto == ENCENDER:
         pulgar(lienzo, (70, y + 62), 38, True, VERDE)
         texto(lienzo, "PULGAR ARRIBA", (125, y + 58), 1.1, VERDE)
         texto(lienzo, "encender", (125, y + 92), 0.7, TENUE, 1)
@@ -325,6 +340,8 @@ def main():
     ap = argparse.ArgumentParser(description="Prende la carga de la ESP32 con el pulgar arriba y la apaga con el puño cerrado.")
     ap.add_argument("--cam", default="tostacam.local", help="IP o nombre de la ESP32, opcional :puerto (default: tostacam.local)")
     ap.add_argument("--puerto-stream", type=int, default=81, help="puerto del video MJPEG (default: 81)")
+    ap.add_argument("--modo", default="mano", choices=["mano", "gestos"],
+                    help="mano: cada aparicion de la mano cambia el estado (default); gestos: pulgar arriba / puño")
     ap.add_argument("--fuente", help="probar sin ESP32: indice de webcam (0) o archivo de video")
     ap.add_argument("--simular", action="store_true", help="no manda nada a la ESP32 (solo prueba)")
     ap.add_argument("--umbral", type=float, default=0.6, help="confianza minima del gesto (0-1)")
@@ -341,8 +358,14 @@ def main():
     reconocedor = crear_reconocedor(a.umbral)
 
     candidato, desde, ultimo_ts = None, 0.0, 0
+    # modo mano: la mano debe verse `sostener` s; luego hay que retirarla `SOLTAR` s para el siguiente cambio
+    SOLTAR, HUECO = 0.8, 0.3
+    armado, vista_desde, ultima_vista = True, None, -1e9
     fps, t_fps, n_fps = 0.0, time.time(), 0
-    print("Listo. Pulgar arriba = encender, puño cerrado = apagar.  (Q para salir)")
+    if a.modo == "mano":
+        print("Listo. Muestra la mano = cambia encendido/apagado; retirala para el siguiente cambio.  (Q para salir)")
+    else:
+        print("Listo. Pulgar arriba = encender, puño cerrado = apagar.  (Q para salir)")
 
     while True:
         img = lector.leer()
@@ -371,15 +394,35 @@ def main():
                 if g.category_name in (ENCENDER, APAGAR) and g.score >= a.umbral:
                     gesto, score = g.category_name, g.score
 
-        # La seña tiene que sostenerse: un pulgar a medio movimiento no dispara nada.
         ahora = time.monotonic()
-        if gesto != candidato:
-            candidato, desde = gesto, ahora
-        avance = (ahora - desde) / a.sostener if gesto else 0
-        quiere = {ENCENDER: True, APAGAR: False}.get(gesto)
-        if quiere is not None and avance >= 1 and carga.encendida != quiere:
-            carga.poner(quiere)
-            carga.encendida = quiere          # optimista; la respuesta de la ESP32 lo confirma
+        if a.modo == "mano":
+            # Cada aparicion de la mano cambia el estado. Se toleran huecos cortos de la deteccion.
+            if mano:
+                ultima_vista = ahora
+            presente = ahora - ultima_vista < HUECO
+            gesto = APAGAR if carga.encendida else ENCENDER      # lo que va a pasar (colores y textos)
+            avance = 0
+            if presente and armado:
+                vista_desde = vista_desde or ahora
+                avance = (ahora - vista_desde) / a.sostener
+                if avance >= 1:
+                    quiere = not carga.encendida
+                    carga.poner(quiere)
+                    carga.encendida = quiere
+                    armado, vista_desde = False, None
+            elif not presente:
+                vista_desde = None
+                if not armado and ahora - ultima_vista >= SOLTAR:
+                    armado = True
+        else:
+            # La seña tiene que sostenerse: un pulgar a medio movimiento no dispara nada.
+            if gesto != candidato:
+                candidato, desde = gesto, ahora
+            avance = (ahora - desde) / a.sostener if gesto else 0
+            quiere = {ENCENDER: True, APAGAR: False}.get(gesto)
+            if quiere is not None and avance >= 1 and carga.encendida != quiere:
+                carga.poner(quiere)
+                carga.encendida = quiere          # optimista; la respuesta de la ESP32 lo confirma
 
         n_fps += 1
         if time.time() - t_fps >= 1:
@@ -387,7 +430,8 @@ def main():
 
         if a.sin_ventana:
             continue
-        cv2.imshow("Tostatronic - Gestos", dibujar(img, mano, gesto, avance, carga, lector.conectado, fps, score))
+        cv2.imshow("Tostatronic - Gestos", dibujar(img, mano, gesto, avance, carga, lector.conectado, fps, score,
+                                                   modo=a.modo, armado=armado))
         tecla = cv2.waitKey(1) & 0xFF
         if tecla in (ord("q"), 27):
             break

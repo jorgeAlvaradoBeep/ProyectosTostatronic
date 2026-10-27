@@ -137,6 +137,12 @@ python gestos.py --cam 192.168.1.50    # la IP de tu ESP32 (o tostacam.local)
 
 La primera vez descarga el modelo de gestos de MediaPipe (unos 8 MB).
 
+**Modo mano (por defecto):** cada vez que muestras la mano a la cámara (medio
+segundo), el LED cambia de estado: encendido ↔ apagado. Retira la mano para el
+siguiente cambio. Es el modo más confiable con la cámara de la ESP32.
+
+**Modo gestos** (`--modo gestos`):
+
 - **Pulgar arriba**, sostenido medio segundo → enciende.
 - **Puño cerrado** → apaga. (Con la cámara de la ESP32 el pulgar abajo se reconoce mal; el puño es estable.)
 
@@ -146,6 +152,7 @@ sale.
 
 | Opción | Para qué |
 |---|---|
+| `--modo gestos` | Pulgar arriba enciende, puño cerrado apaga (en vez de «mano = cambia») |
 | `--girar 90\|180\|270` | Si la cámara quedó de lado o de cabeza |
 | `--espejo` | Voltea la imagen como espejo |
 | `--umbral 0.6` | Confianza mínima del gesto (0 a 1) |
