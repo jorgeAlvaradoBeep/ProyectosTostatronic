@@ -144,8 +144,11 @@ class Carga:
         evento, t0 = self.evento, time.monotonic()
         try:
             with urllib.request.urlopen(url, timeout=6) as r:
-                self.encendida = b"true" in r.read()
+                estado = b"true" in r.read()
                 self.error = ""
+            # La consulta inicial puede llegar tarde: si ya se mando un comando, no lo pisa.
+            if encender is not None or self.evento is None:
+                self.encendida = estado
             if encender is not None:
                 ms = int((time.monotonic() - t0) * 1000)
                 if evento:
