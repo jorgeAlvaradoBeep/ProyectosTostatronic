@@ -349,6 +349,7 @@ def main():
     ap.add_argument("--girar", type=int, default=0, choices=[0, 90, 180, 270], help="rota la imagen de la camara")
     ap.add_argument("--espejo", action="store_true", help="voltea la imagen como espejo")
     ap.add_argument("--sin-ventana", action="store_true", help="sin ventana (solo consola)")
+    ap.add_argument("--grabar", metavar="ARCHIVO.mp4", help="graba la ventana a MP4 (30 fps) y anota cada comando en ARCHIVO.txt")
     a = ap.parse_args()
 
     host = a.cam.split(":")[0]
@@ -362,6 +363,7 @@ def main():
     SOLTAR, HUECO = 0.8, 0.3
     armado, vista_desde, ultima_vista = True, None, -1e9
     fps, t_fps, n_fps = 0.0, time.time(), 0
+    grabador, t_grab, escritos, bitacora = None, 0.0, 0, None
     if a.modo == "mano":
         print("Listo. Muestra la mano = cambia encendido/apagado; retirala para el siguiente cambio.  (Q para salir)")
     else:
@@ -428,10 +430,27 @@ def main():
         if time.time() - t_fps >= 1:
             fps, n_fps, t_fps = n_fps / (time.time() - t_fps), 0, time.time()
 
+        if carga.evento and carga.evento.get("anotado") is None and bitacora:
+            carga.evento["anotado"] = True
+            seg = carga.evento["t"] - t_grab
+            bitacora.write(f"{seg:8.2f} s  {'ENCENDER' if carga.evento['encender'] else 'APAGAR'}\n")
+            bitacora.flush()
         if a.sin_ventana:
             continue
-        cv2.imshow("Tostatronic - Gestos", dibujar(img, mano, gesto, avance, carga, lector.conectado, fps, score,
-                                                   modo=a.modo, armado=armado))
+        cuadro = dibujar(img, mano, gesto, avance, carga, lector.conectado, fps, score, modo=a.modo, armado=armado)
+        if a.grabar:
+            if grabador is None:
+                h, w = cuadro.shape[:2]
+                grabador = cv2.VideoWriter(a.grabar, cv2.VideoWriter_fourcc(*"mp4v"), 30, (w, h))
+                bitacora = open(os.path.splitext(a.grabar)[0] + ".txt", "w")
+                t_grab = time.monotonic()
+                print(f"[grabando] {a.grabar}")
+            # 30 fps de reloj: el cuadro actual se repite hasta que llegue el siguiente
+            debe = int((time.monotonic() - t_grab) * 30) + 1
+            while escritos < debe:
+                grabador.write(cuadro)
+                escritos += 1
+        cv2.imshow("Tostatronic - Gestos", cuadro)
         tecla = cv2.waitKey(1) & 0xFF
         if tecla in (ord("q"), 27):
             break
@@ -441,6 +460,10 @@ def main():
             carga.poner(False)
 
     lector.vivo = False
+    if grabador:
+        grabador.release()
+        bitacora.close()
+        print(f"[grabando] listo: {escritos / 30:.1f} s en {a.grabar}")
     cv2.destroyAllWindows()
 
 
