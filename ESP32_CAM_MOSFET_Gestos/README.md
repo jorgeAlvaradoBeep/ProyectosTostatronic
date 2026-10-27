@@ -3,7 +3,7 @@
 Proyecto demostrativo de **Tostatronic** — Ing. Jorge Alvarado.
 
 Le enseñas el **pulgar arriba** a la cámara y un módulo LED de 12 V se enciende.
-Con el **puño cerrado**, se apaga. La ESP32-WROVER-CAM manda el video por WiFi a
+Con la **señal de paz** (✌️), se apaga. La ESP32-WROVER-CAM manda el video por WiFi a
 un programa en Python que reconoce la seña con MediaPipe y le contesta a la placa
 cuál debe ser el estado del LED.
 
@@ -138,7 +138,7 @@ python gestos.py --cam 192.168.1.50    # la IP de tu ESP32 (o tostacam.local)
 La primera vez descarga el modelo de gestos de MediaPipe (unos 8 MB).
 
 - **Pulgar arriba**, sostenido medio segundo → enciende.
-- **Puño cerrado** → apaga. (El pulgar abajo lo reconocía mal con la cámara de la ESP32; el puño es mucho más estable.)
+- **Señal de paz** (✌️) → apaga. (Con la cámara de la ESP32, el pulgar abajo y el puño cerrado se reconocían mal; la señal de paz es estable.)
 
 La barra de abajo se llena mientras sostienes la seña, así que una seña a medio
 movimiento no dispara nada. En la ventana, **E** enciende, **A** apaga y **Q**

@@ -8,7 +8,7 @@
  *  La camara manda video por WiFi a un programa en Python
  *  (servicio_gestos/gestos.py) que detecta tus senas:
  *      pulgar arriba -> GET /carga?estado=1 -> GPIO33 en 1 -> LED encendido
- *      puño cerrado  -> GET /carga?estado=0 -> GPIO33 en 0 -> LED apagado
+ *      señal de paz  -> GET /carga?estado=0 -> GPIO33 en 0 -> LED apagado
  *
  *  GPIO33 -> 74LS07 (1A, pin 1)  -> 1Y (pin 2) -> pull-up 4.7k a 12 V
  *         -> 100 ohms -> compuerta del IRFZ44N -> el drain cierra el
