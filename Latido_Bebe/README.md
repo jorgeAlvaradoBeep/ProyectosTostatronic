@@ -28,7 +28,8 @@ crea su propia red WiFi y sirve una página que recorta y convierte el video ah�
 | Batería 18650 | — |
 | Switch balancín On/Off 117S de 15 × 21 mm | [BTSW117S](https://www.tostatronic.com/product/switch-on-off-117s-1521mm-250vac-6a/) |
 | 2 resistencias de 100 kΩ (medidor de batería, opcional) | — |
-| Tornillos M3 autorroscantes: 3 de 10 mm (tapa), 2 de 8 mm (puente), 2 de 6 mm (holder) | — |
+| 7 tornillos **M4 × 16** de cabeza cilíndrica o redonda: 3 de la tapa, 2 de los puentes, 2 de la grapa de la ESP32 | — |
+| Tornillos **M3 × 6**: 1 a 3 para el holder y 2 para el amplificador | — |
 
 ---
 
@@ -120,29 +121,50 @@ la celda (el TP4056 con protección la corta además a ~2.5 V).
 
 ## 5. Carcasa
 
-En [`carcasa/`](carcasa/). Tres piezas en PLA, sin soportes:
+En [`carcasa/`](carcasa/). Piezas en PLA, sin soportes:
 
-| Archivo | Cómo se imprime |
-|---|---|
-| `Latido_Frente.stl` | con la cara del frente sobre la cama |
-| `Latido_Tapa.stl` | con la cara de afuera sobre la cama (ya viene volteada) |
-| `Latido_Puente_Pantalla.stl` | acostado |
+| Archivo | Cuántas | Cómo se imprime |
+|---|---|---|
+| `Latido_Frente.stl` | 1 | con la cara del frente sobre la cama |
+| `Latido_Tapa.stl` | 1 | con la cara de afuera sobre la cama (ya viene volteada) |
+| `Latido_Puente.stl` | **2** | acostado, con el bloque del tornillo hacia arriba |
+| `Latido_Grapa_C3.stl` | 1 | acostada |
 
 ![Corte lateral](carcasa/Vista_Corte.png)
 
-- **Frente:** la pantalla arriba y la bocina abajo, detrás de una rejilla en forma de corazón.
-  La pantalla se asienta contra la ventana y se aprieta por atrás con el puente (2 tornillos
-  M3; ponle un pedacito de cinta de espuma en medio para no presionar los componentes).
-  La bocina entra en su anillo y se fija con tres puntos de silicón: de paso sella el frente,
-  que es lo que le da cuerpo al sonido.
-- **Tapa:** el holder parado a la izquierda (2 tornillos M3 por sus barrenos; las terminales
-  caen en dos canales por donde salen los cables) y, a la derecha, TP4056, ESP32-C3 y
-  amplificador en sus cunas, con cinta doble cara. Los dos USB-C salen por el costado derecho:
-  abajo el de **carga**, arriba el de la ESP32.
-- **Switch:** balancín 117S en la pared de arriba; entra a presión por fuera en un corte de 19.2 × 13 mm.
-- La ESP32-C3 va **sin pines soldados** en la versión final (cables directos).
-- Todo el interior es la caja acústica de la bocina: quedan unos 120 cm³ de aire. No lo
-  rellenes y, si quieres un sonido más redondo, pega un poco de guata detrás de la batería.
+**Frente**
+
+- La pantalla arriba y la bocina abajo, detrás de una rejilla en forma de corazón.
+- Cada una se aprieta por atrás con un **puente**: la punta izquierda entra en una bolsa de la
+  pared y del lado derecho lleva **un tornillo M4 × 16**. Se mete primero la punta y luego se
+  baja el bloque sobre su poste. Sobre la pantalla el puente deja 1 mm libre: ponle un pedacito
+  de cinta de espuma para no presionar los componentes. Centra la pantalla en la ventana antes
+  de apretar.
+- La bocina entra en su anillo; el puente la mantiene asentada. Un cordón de silicón en la
+  orilla sigue siendo buena idea: sella el frente, que es lo que le da cuerpo al sonido.
+- **Switch** balancín 117S en la pared de arriba; entra a presión por fuera en un corte de
+  19.4 × 13.2 mm.
+
+**Tapa**
+
+- **Holder** parado a la izquierda, dentro de un marco ("casita") que lo abraza con 0.1 mm por
+  lado, igual que en la báscula. Lleva tres pilotos M3 (uno al centro y los dos de la ficha):
+  usa los que coincidan con tu holder. Las terminales caen en dos canales por donde salen los cables.
+- **TP4056** en rieles: se desliza desde la orilla, con el USB hacia afuera, hasta el tope, antes
+  de cerrar la caja. Ya cerrada, la pared no lo deja salir. **Suelda sus cables después de
+  meterlo** (o por debajo): las bolitas de soldadura de las esquinas no pasan bajo los rieles.
+- **ESP32-C3 con los pines soldados**: se sienta en un pedestal que queda entre las dos filas de
+  pines (los pines cuelgan a los lados), con tope atrás. Una **grapa** cruza sobre su conector USB
+  y se atornilla con 2 M4 × 16. Los cables van soldados o con Dupont en los pines.
+- **MAX98357A** atornillado por sus dos barrenos (M3 × 6) sobre dos postes.
+- La tapa cierra con 3 tornillos M4 × 16 que roscan directo en los postes del frente.
+- Los dos USB-C salen por el costado derecho: abajo el de **carga**, arriba el de la ESP32.
+
+Los M4 roscan directo en el plástico (piloto de 3.4 mm): entran firmes la primera vez; no los
+aprietes de más.
+
+Todo el interior es la caja acústica de la bocina: quedan unos 105 cm³ de aire. No lo rellenes
+y, si quieres un sonido más redondo, pega un poco de guata detrás de la batería.
 
 ### Cambiar medidas
 
@@ -159,7 +181,8 @@ módulo y **hay que confirmarlas con vernier**:
 
 | Medida | Valor usado | En el script |
 |---|---|---|
-| Alto total de la bocina | 6.0 mm | `BOCINA_H` |
+| Barrenos del amplificador | 12.6 mm entre centros, a 2.7 mm de la orilla; que pase un M3 | `AMP_BARRENOS` |
+| Lo que cuelgan los pines de la ESP32-C3 | 9.2 mm bajo la tarjeta | `C3_PINES` |
 | Alto del holder 18650 | 21.3 mm | `HOLDER` |
 | Tarjeta redonda de la pantalla | hasta Ø 38 mm | `LCD_PCB_D` |
 | Grueso de la pantalla (vidrio + tarjeta) | 5.2 mm | `LCD_GRUESO` |
