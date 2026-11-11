@@ -1,0 +1,42 @@
+{
+ "exterior_mm": [
+  56.8,
+  95.8,
+  41.0
+ ],
+ "piezas": {
+  "Latido_Frente": {
+   "cerrada": true,
+   "cuerpos": 1,
+   "volumen_cm3": 39.3,
+   "medidas_mm": [
+    56.8,
+    95.8,
+    38.0
+   ]
+  },
+  "Latido_Tapa": {
+   "cerrada": true,
+   "cuerpos": 1,
+   "volumen_cm3": 20.9,
+   "medidas_mm": [
+    56.8,
+    95.8,
+    9.0
+   ]
+  },
+  "Latido_Puente_Pantalla": {
+   "cerrada": true,
+   "cuerpos": 1,
+   "volumen_cm3": 1.2,
+   "medidas_mm": [
+    51.5,
+    8.0,
+    3.0
+   ]
+  }
+ },
+ "choques_mm3": {},
+ "aire_para_la_bocina_cm3": 114,
+ "rejilla_barrenos": 71
+}

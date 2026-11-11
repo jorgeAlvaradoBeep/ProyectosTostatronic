@@ -15,6 +15,7 @@ productos de [tostatronic.com](https://www.tostatronic.com). Todo es libre:
 | [Contador_74LS48](Contador_74LS48/) | Contador 0–9: display de cátodo común manejado con 4 GPIO y el decodificador 74LS48 | ESP32 · ESP32-S3 |
 | [Display_7_Segmentos](Display_7_Segmentos/) | Cátodo común vs ánodo común: diferencia, cómo identificarlo y con qué usarlo | — |
 | [ESP32_CAM_MOSFET_Gestos](ESP32_CAM_MOSFET_Gestos/) | Pulgar arriba / puño cerrado frente a la cámara: Python (MediaPipe) enciende un LED de 12 V con 74LS07 + IRFZ44N | ESP32-WROVER-CAM |
+| [Latido_Bebe](Latido_Bebe/) | El ultrasonido en una pantalla redonda GC9A01 con el sonido del corazón (MAX98357A + bocina), batería 18650 y página web para subir el video desde el celular; incluye carcasa 3D | ESP32-C3 Super Mini |
 
 Cada carpeta tiene su propio README con conexiones, lista de materiales y
 explicación.
