@@ -7,7 +7,8 @@ de la 18650 (parado, a la izquierda, dentro de su marco) y, en columna a la dere
 ESP32-C3 Super Mini con sus pines soldados (sobre un pedestal, con una grapa) y el MAX98357A (atornillado).
 Los dos USB-C salen por el costado. Todo el interior es la caja acustica de la bocina.
 
-Tornillos: M4 x 16 en la tapa (3), los puentes (2) y la grapa de la C3 (2); M3 en el holder y el amplificador.
+Tornillos: M4 x 16 con TUERCA M4 ATRAPADA en la tapa (3), los puentes (2) y la grapa de la C3 (1); M3 en el holder
+y el amplificador. Las tuercas se meten en una pausa de la impresion: las alturas salen en validacion_carcasa.json.
 
 Coordenadas: X = ancho, Y = alto, Z = fondo (0 = cara del frente, FONDO = espalda), viendo el aparato DE FRENTE.
 Las cotas ix / iy son interiores (desde la esquina inferior izquierda del hueco).
@@ -52,7 +53,9 @@ SW_CORTE = (19.4, 13.2)        # switch balancin 117S (15 x 21): corte del panel
 SW_FONDO = (13.5, 20.5)        # cuerpo detras del marco, y total hasta la punta de las terminales
 
 # --- tornilleria
-M4_PILOTO, M4_PASO, M4_CABEZA = 3.4, 4.5, (7.2, 4.0)   # M4 x 16 autorroscando en PLA; cabeza cilindrica o redonda
+M4_PASO, M4_CABEZA = 4.6, (7.2, 4.0)      # M4 x 16 de cabeza cilindrica o redonda
+TUERCA = (7.4, 3.6)                       # hueco de la tuerca M4 (7 entre caras x 3.2 de alto): entre caras, alto
+CAPA = 0.2                                # altura de capa, para decir en que capa va cada pausa
 M4_LARGO = 16.0
 M3_PILOTO = 2.5
 
@@ -73,17 +76,18 @@ Z_TAPA = FONDO - TAPA          # cara interior de la tapa
 # --- frente
 BOC = (IN_W / 2, 23.5)                     # centro de la bocina (ix, iy)
 LCD = (IN_W / 2, IN_H - LCD_OREJA[1] - 1)  # centro de la pantalla
-PUENTE = (8.0, 3.0, 9.2)                   # puentes: ancho, grueso de la barra, alto del bloque del tornillo
-PUENTE_X = IN_W - 4.0                      # su tornillo M4 va pegado a la pared derecha; la otra punta entra en la pared izquierda
+PUENTE = (8.0, 3.0, 10.2)                  # puentes: ancho, grueso de la barra, alto del bloque del tornillo
+PUENTE_X = IN_W - 3.7                      # su tornillo M4 va pegado a la pared derecha; la otra punta entra en la pared izquierda
+Z_TUERCA_PUENTE = FRENTE + 0.2             # las tuercas de los puentes quedan casi sobre la cara del frente
 #          iy del puente, z donde asienta
 P_LCD = (LCD[1] + 6.0, FRENTE + LCD_GRUESO + 1.0)   # 1 mm libre sobre la tarjeta: ahi va cinta de espuma
-P_BOC = (BOC[1], FRENTE + BOCINA_H + 0.3)
+P_BOC = (BOC[1] - 6.0, FRENTE + BOCINA_H + 0.3)     # 6 mm abajo del centro: todavia pisa el iman
 
 # --- tapa (posiciones interiores, vistas de frente)
 PEDESTAL = 2.0                             # el holder va levantado para librar sus terminales
 MARCO = (1.6, 5.0)                         # "casita" del holder: grueso y alto de sus paredes
-HOLDER_XY = (2.2, 2.5)                     # esquina inferior izquierda del holder
-TP_Y, C3_Y, AMP_Y = 11.1, 38.5, 67.0       # columna derecha, de abajo hacia arriba
+HOLDER_XY = (2.2, 2.0)                     # esquina inferior izquierda del holder
+TP_Y, C3_Y, AMP_Y = 12.75, 34.4, 62.8      # columna derecha, de abajo hacia arriba
 AMP_X = 26.0
 AMP_PISO = 3.0                             # postes del amplificador
 CUNA = (1.2, 2.7)                          # rieles del TP4056: grueso, alto
@@ -93,11 +97,14 @@ USB_Z_TP = Z_TAPA - PISO_CUNA - 1.6 - 1.6  # centro del conector del TP4056
 Z_C3 = Z_TAPA - C3_PINES                   # cara de abajo de la tarjeta de la C3
 USB_Z_C3 = Z_C3 - 1.6 - 1.6
 Z_GRAPA = Z_C3 - 1.6 - 3.2 - 0.2           # la grapa de la C3 pasa justo sobre su conector USB
-GRAPA_Y = (C3_Y - 4.5, C3_Y + C3[1] + 4.5)
-R_POSTE = 4.2
-R_GRAPA = 3.8                              # postes de la grapa de la C3
+GRAPA_X = 50.0                             # tornillo de la grapa
+GRAPA_GANCHO = (C3_Y - 2.8, C3_Y - 0.3)    # abajo de la C3: gancho donde entra la punta de la grapa
+GRAPA_POSTE = (C3_Y + C3[1] + 0.3, C3_Y + C3[1] + 10.1)   # arriba: poste con la tuerca
+Z_TUERCA_GRAPA = Z_GRAPA + 6.2
+R_POSTE = 5.5                              # postes de la tapa (llevan tuerca)
+Z_TUERCA_TAPA = FONDO - 1.6 - M4_LARGO + 3.6   # la punta del tornillo pasa 3.6 mm de la tuerca
 POSTES = [(R_POSTE + 0.2, IN_H - R_POSTE - 0.2), (IN_W - R_POSTE - 0.2, IN_H - R_POSTE - 0.2), (IN_W - R_POSTE - 0.2, R_POSTE + 0.2)]
-SW = (36.0, 23.0)                          # switch en la pared de arriba: centro (ix, z)
+SW = (32.0, 23.0)                              # switch en la pared de arriba: centro (ix, z)
 
 
 # ============================================================
@@ -117,6 +124,13 @@ def redondeado(x0, y0, x1, y1, r, z0, z1, n=16):
         for a in np.radians(np.linspace(a0, a0 + 90, n)):
             pts.append((cx + r * np.cos(a), cy + r * np.sin(a)))
     return md.CrossSection([np.array(pts)], md.FillRule.Positive).extrude(z1 - z0).translate([0, 0, z0])
+
+
+def hexa(ix, iy, z0, z1):
+    """hueco hexagonal de una tuerca M4, con dos caras paralelas a las paredes laterales"""
+    r = TUERCA[0] / 2 / np.cos(np.pi / 6)
+    pts = np.array([(r * np.cos(a), r * np.sin(a)) for a in np.radians(np.arange(30, 390, 60))])
+    return md.CrossSection([pts], md.FillRule.Positive).extrude(z1 - z0).translate([PARED + ix, PARED + iy, z0])
 
 
 def corazon():
@@ -140,13 +154,13 @@ def frente():
     s += cil(*BOC, BOCINA_D / 2 + HOLG + 1.4, FRENTE - 0.1, FRENTE + 3.0)
     # puentes de la pantalla y la bocina: poste del tornillo M4 junto a la pared derecha
     for py, z in (P_LCD, P_BOC):
-        s += cil(PUENTE_X, py, 3.6, FRENTE - 0.1, z) + caja(PUENTE_X, IN_W, py - 3.6, py + 3.6, FRENTE - 0.1, z)
+        s += caja(PUENTE_X - 4.5, IN_W, py - 5.0, py + 5.0, FRENTE - 0.1, z)
     # postes de los tornillos de la tapa
     for px, py in POSTES:
         s += cil(px, py, R_POSTE, FRENTE - 0.1, Z_TAPA) + \
             caja(0 if px < IN_W / 2 else px, px if px < IN_W / 2 else IN_W, py - R_POSTE, py + R_POSTE, FRENTE - 0.1, Z_TAPA) + \
             caja(px - R_POSTE, px + R_POSTE, 0 if py < IN_H / 2 else py, py if py < IN_H / 2 else IN_H, FRENTE - 0.1, Z_TAPA)
-        s -= cil(px, py, M4_PILOTO / 2, Z_TAPA - (M4_LARGO - 1.0), Z_TAPA + 1)
+        s -= cil(px, py, M4_PASO / 2, Z_TUERCA_TAPA - 4.5, Z_TAPA + 1) + hexa(px, py, Z_TUERCA_TAPA, Z_TUERCA_TAPA + TUERCA[1])
     s = s ^ redondeado(0, 0, W, H, R_EXT, 0, Z_TAPA)          # nada sale del contorno
     # pantalla: ventana con chaflan hacia afuera
     s -= cil(*LCD, LCD_VENTANA / 2, -1, FRENTE + 1)
@@ -157,7 +171,7 @@ def frente():
         s -= cil(BOC[0] + x, BOC[1] + y, 1.2, -1, FRENTE + 1, seg=24)
     # puentes: piloto del tornillo y, en la pared izquierda, la bolsa donde entra la punta
     for py, z in (P_LCD, P_BOC):
-        s -= cil(PUENTE_X, py, M4_PILOTO / 2, 0.8, z + 1)
+        s -= cil(PUENTE_X, py, M4_PASO / 2, 2.0, z + 1) + hexa(PUENTE_X, py, Z_TUERCA_PUENTE, Z_TUERCA_PUENTE + TUERCA[1])
         s -= caja(-1.4, 0.2, py - PUENTE[0] / 2 - 0.3, py + PUENTE[0] / 2 + 0.3, z - 0.2, z + PUENTE[1] + 0.5)
     # ventanas de los USB-C (pared derecha, abiertas hacia la tapa)
     for y0, ancho, zc in ((TP_Y, TP4056[1], USB_Z_TP), (C3_Y, C3[1], USB_Z_C3)):
@@ -171,7 +185,7 @@ def frente():
 def puente(py, z):
     """barra que aprieta por atras: la punta izquierda entra en la pared y el bloque derecho lleva un M4 x 16"""
     A, G, B = PUENTE
-    p = caja(-1.2, IN_W - 0.3, py - A / 2, py + A / 2, z, z + G) + caja(PUENTE_X - 4.0, IN_W - 0.3, py - A / 2, py + A / 2, z, z + B)
+    p = caja(-1.2, IN_W - 0.3, py - A / 2, py + A / 2, z, z + G) + caja(PUENTE_X - 4.5, IN_W - 0.3, py - A / 2, py + A / 2, z, z + B)
     return p - cil(PUENTE_X, py, M4_PASO / 2, z - 1, z + B + 1)
 
 
@@ -196,8 +210,9 @@ def tapa():
     hx, hy = HOLDER_XY
     g, h = MARCO
     zp = Z_TAPA - PEDESTAL
-    t += caja(hx - 0.1 - g, hx + HOLDER[0] + 0.1 + g, hy - 0.1 - g, hy + HOLDER[1] + 0.1 + g, zp - h, Z) - \
+    marco = caja(hx - 0.1 - g, hx + HOLDER[0] + 0.1 + g, hy - 0.1 - g, hy + HOLDER[1] + 0.1 + g, zp - h, Z) - \
         caja(hx - 0.1, hx + HOLDER[0] + 0.1, hy - 0.1, hy + HOLDER[1] + 0.1, zp - h - 1, zp)
+    t += marco ^ redondeado(PARED + HOLG, PARED + HOLG, W - PARED - HOLG, H - PARED - HOLG, R_EXT - PARED - HOLG, 0, FONDO)   # la esquina sigue el redondeo de la caja
     for y in (hy + HOLDER_PIN, hy + HOLDER[1] - HOLDER_PIN):
         t -= caja(hx + 3, hx + HOLDER[0] + 3, y - 2.5, y + 2.5, zp - h - 1, Z_TAPA + 1.8)
     for y in (hy + HOLDER[1] / 2, hy + HOLDER[1] / 2 - HOLDER_BARRENO / 2, hy + HOLDER[1] / 2 + HOLDER_BARRENO / 2):
@@ -212,17 +227,20 @@ def tapa():
     for s in (-1, 1):
         ya = y0 - HOLG - g if s < 0 else y0 + A + HOLG
         t += caja(x0 - HOLG - g, x0 + L - 4, ya, ya + g, zs - h, Z)
-        yl = y0 - HOLG if s < 0 else y0 + A + HOLG - 0.9                                      # riel: 0.65 mm sobre la orilla, solo al centro
-        t += caja(x0 + 8, x0 + L - 8, yl, yl + 0.9, zs - h, zs - 1.6 - 0.3)
+        yl = y0 - HOLG - 0.2 if s < 0 else y0 + A + HOLG - 0.9                                # riel: 0.65 mm sobre la orilla, solo al centro
+        t += caja(x0 + 8, x0 + L - 8, yl, yl + 1.1, zs - h, zs - 1.6 - 0.3)
 
     # --- ESP32-C3 con pines soldados: pedestal entre las dos filas de pines, tope atras y postes de la grapa
     x0, y0, (L, A) = IN_W - C3[0], C3_Y, C3
     yc = y0 + A / 2
     t += caja(x0 - HOLG - 1.6, x0 + L - 3, yc - 6.0, yc + 6.0, Z_C3, Z)
     t += caja(x0 - HOLG - 1.6, x0 - HOLG, yc - 6.0, yc + 6.0, Z_C3 - 2.6, Z_C3 + 0.1)
-    for py in GRAPA_Y:
-        t += cil(PUENTE_X, py, R_GRAPA, Z_GRAPA, Z) + caja(PUENTE_X, IN_W - HOLG, py - R_GRAPA, py + R_GRAPA, Z_GRAPA, Z)
-        t -= cil(PUENTE_X, py, M4_PILOTO / 2, Z_GRAPA - 1, Z_GRAPA + M4_LARGO - 2.0)
+    # gancho (abajo) y poste con tuerca atrapada (arriba) para la grapa
+    t += caja(45.8, IN_W - HOLG, GRAPA_GANCHO[0], GRAPA_GANCHO[1], Z_GRAPA - 5.3, Z) - \
+        caja(47.0, IN_W - HOLG - 1.2, GRAPA_GANCHO[0] - 1, GRAPA_GANCHO[1] + 1, Z_GRAPA - 3.3, Z_GRAPA + 0.3)
+    t += caja(GRAPA_X - 5.0, IN_W - HOLG, GRAPA_POSTE[0], GRAPA_POSTE[1], Z_GRAPA, Z)
+    gy = sum(GRAPA_POSTE) / 2
+    t -= cil(GRAPA_X, gy, M4_PASO / 2, Z_GRAPA - 1, Z_GRAPA + M4_LARGO - 2.6) + hexa(GRAPA_X, gy, Z_TUERCA_GRAPA, Z_TUERCA_GRAPA + TUERCA[1])
     # relleno de la ventana del USB de la C3 (la ventana del frente llega hasta la tapa)
     t += caja(IN_W + HOLG, IN_W + PARED, yc - USB[0] / 2 + HOLG, yc + USB[0] / 2 - HOLG, USB_Z_C3 + USB[1] / 2 + 0.3, Z)
 
@@ -243,11 +261,10 @@ def tapa():
 
 
 def grapa():
-    """barra que cruza sobre el conector USB de la C3 y la mantiene asentada (2 tornillos M4 x 16)"""
-    gp = caja(PUENTE_X - 3.6, IN_W - 0.4, GRAPA_Y[0] - R_GRAPA, GRAPA_Y[1] + R_GRAPA, Z_GRAPA - 3.0, Z_GRAPA)
-    for py in GRAPA_Y:
-        gp -= cil(PUENTE_X, py, M4_PASO / 2, Z_GRAPA - 4, Z_GRAPA + 1)
-    return gp
+    """barra que cruza sobre el conector USB de la C3: la punta entra en el gancho y del otro lado lleva un M4 x 16"""
+    gp = caja(47.3, IN_W - HOLG - 1.5, GRAPA_GANCHO[0] + 0.3, GRAPA_POSTE[1] - 0.2, Z_GRAPA - 3.0, Z_GRAPA) + \
+        caja(GRAPA_X - 4.5, IN_W - 0.5, GRAPA_POSTE[0] + 0.2, GRAPA_POSTE[1] - 0.2, Z_GRAPA - 3.0, Z_GRAPA)
+    return gp - cil(GRAPA_X, sum(GRAPA_POSTE) / 2, M4_PASO / 2, Z_GRAPA - 4, Z_GRAPA + 1)
 
 
 # ============================================================
@@ -273,7 +290,7 @@ def componentes():
         'switch': caja(SW[0] - SW_CORTE[0] / 2, SW[0] + SW_CORTE[0] / 2, IN_H + PARED - SW_FONDO[0], IN_H + PARED, SW[1] - SW_CORTE[1] / 2, SW[1] + SW_CORTE[1] / 2)
                   + caja(SW[0] - 6, SW[0] + 6, IN_H + PARED - SW_FONDO[1] + 2, IN_H + PARED - SW_FONDO[0], SW[1] - 3, SW[1] + 3),
         'tornillos_puentes': cabeza(PUENTE_X, P_LCD[0], P_LCD[1] + PUENTE[2]) + cabeza(PUENTE_X, P_BOC[0], P_BOC[1] + PUENTE[2]),
-        'tornillos_grapa': cabeza(PUENTE_X, GRAPA_Y[0], Z_GRAPA - 3.0 - M4_CABEZA[1]) + cabeza(PUENTE_X, GRAPA_Y[1], Z_GRAPA - 3.0 - M4_CABEZA[1]),
+        'tornillo_grapa': cabeza(GRAPA_X, sum(GRAPA_POSTE) / 2, Z_GRAPA - 3.0 - M4_CABEZA[1]),
     }
 
 
@@ -323,9 +340,8 @@ def vistas(comp):
     for n, (x, y, w, h, c) in {'holder\n18650': (hx, hy, HOLDER[0], HOLDER[1], '#fd8'), 'TP4056\n(rieles)': (IN_W - TP4056[0], TP_Y, *TP4056, '#8bf'),
                               'ESP32-C3\n(pedestal)': (IN_W - C3[0], C3_Y, *C3, '#8d8'), 'MAX\n98357A': (AMP_X, AMP_Y, *AMP, '#c9f')}.items():
         a.add_patch(Rectangle((P + x, P + y), w, h, fc=c, ec='k')); a.text(P + x + w / 2, P + y + h / 2, n, ha='center', va='center', fontsize=8)
-    a.add_patch(Rectangle((P + PUENTE_X - 3.6, P + GRAPA_Y[0] - R_GRAPA), 7.2, GRAPA_Y[1] - GRAPA_Y[0] + 2 * R_GRAPA, fc='#fc6', ec='k', alpha=.7))
-    for py in GRAPA_Y:
-        a.add_patch(Circle((P + PUENTE_X, P + py), 2.2, fc='w', ec='k'))
+    a.add_patch(Rectangle((P + 47.3, P + GRAPA_GANCHO[0]), 5.5, GRAPA_POSTE[1] - GRAPA_GANCHO[0], fc='#fc6', ec='k', alpha=.7))
+    a.add_patch(Circle((P + GRAPA_X, P + sum(GRAPA_POSTE) / 2), 2.2, fc='w', ec='k'))
     for px, py in POSTES:
         a.add_patch(Circle((P + px, P + py), M4_PASO / 2, fc='w', ec='k'))
     a.text(W + 0.5, P + C3_Y + 9, 'USB ->', rotation=90, va='center', fontsize=8)
@@ -373,6 +389,13 @@ if __name__ == '__main__':
         - sum(m.volume() for n, m in ensamble.items() if n != 'Latido_Frente') + W * H * TAPA
     rep['aire_para_la_bocina_cm3'] = round(hueco / 1000)
     rep['rejilla_barrenos'] = len(corazon())
+    def pausa(z):                # la pausa va ANTES de la primera capa que tapa el hexagono
+        return {'altura_mm': round(z, 2), 'pausa_antes_de_la_capa': int(round(z / CAPA)) + 1}
+    rep['pausas_para_tuercas_M4'] = {
+        'Latido_Frente': [dict(pausa(Z_TUERCA_PUENTE + TUERCA[1]), tuercas=2, donde='postes de los puentes'),
+                          dict(pausa(Z_TUERCA_TAPA + TUERCA[1]), tuercas=3, donde='postes de la tapa')],
+        'Latido_Tapa': [dict(pausa(FONDO - Z_TUERCA_GRAPA), tuercas=1, donde='poste de la grapa de la C3')],
+        'nota': f'capas de {CAPA} mm, primera capa incluida; con otro perfil guiate por la altura'}
     (O / 'validacion_carcasa.json').write_text(json.dumps(rep, indent=1, ensure_ascii=False), encoding='utf-8')
     vistas(comp)
     print(json.dumps(rep, indent=1, ensure_ascii=False))

@@ -28,7 +28,7 @@ crea su propia red WiFi y sirve una página que recorta y convierte el video ah�
 | Batería 18650 | — |
 | Switch balancín On/Off 117S de 15 × 21 mm | [BTSW117S](https://www.tostatronic.com/product/switch-on-off-117s-1521mm-250vac-6a/) |
 | 2 resistencias de 100 kΩ (medidor de batería, opcional) | — |
-| 7 tornillos **M4 × 16** de cabeza cilíndrica o redonda: 3 de la tapa, 2 de los puentes, 2 de la grapa de la ESP32 | — |
+| 6 tornillos **M4 × 16** de cabeza cilíndrica o redonda, con **6 tuercas M4** hexagonales (7 mm entre caras, 3.2 de alto): 3 de la tapa, 2 de los puentes, 1 de la grapa de la ESP32 | — |
 | Tornillos **M3 × 6**: 1 a 3 para el holder y 2 para el amplificador | — |
 
 ---
@@ -136,7 +136,7 @@ En [`carcasa/`](carcasa/). Piezas en PLA, sin soportes:
 
 - La pantalla arriba y la bocina abajo, detrás de una rejilla en forma de corazón.
 - Cada una se aprieta por atrás con un **puente**: la punta izquierda entra en una bolsa de la
-  pared y del lado derecho lleva **un tornillo M4 × 16**. Se mete primero la punta y luego se
+  pared y del lado derecho lleva **un tornillo M4 × 16** con tuerca atrapada en el poste. Se mete primero la punta y luego se
   baja el bloque sobre su poste. Sobre la pantalla el puente deja 1 mm libre: ponle un pedacito
   de cinta de espuma para no presionar los componentes. Centra la pantalla en la ventana antes
   de apretar.
@@ -154,16 +154,29 @@ En [`carcasa/`](carcasa/). Piezas en PLA, sin soportes:
   de cerrar la caja. Ya cerrada, la pared no lo deja salir. **Suelda sus cables después de
   meterlo** (o por debajo): las bolitas de soldadura de las esquinas no pasan bajo los rieles.
 - **ESP32-C3 con los pines soldados**: se sienta en un pedestal que queda entre las dos filas de
-  pines (los pines cuelgan a los lados), con tope atrás. Una **grapa** cruza sobre su conector USB
-  y se atornilla con 2 M4 × 16. Los cables van soldados o con Dupont en los pines.
+  pines (los pines cuelgan a los lados), con tope atrás. Una **grapa** cruza sobre su conector USB:
+  una punta entra en un gancho y la otra lleva un M4 × 16 con tuerca atrapada. Los cables van soldados o con Dupont en los pines.
 - **MAX98357A** atornillado por sus dos barrenos (M3 × 6) sobre dos postes.
-- La tapa cierra con 3 tornillos M4 × 16 que roscan directo en los postes del frente.
+- La tapa cierra con 3 tornillos M4 × 16 que entran en tuercas atrapadas en los postes del frente.
 - Los dos USB-C salen por el costado derecho: abajo el de **carga**, arriba el de la ESP32.
 
-Los M4 roscan directo en el plástico (piloto de 3.4 mm): entran firmes la primera vez; no los
-aprietes de más.
+### Pausas para las tuercas M4
 
-Todo el interior es la caja acústica de la bocina: quedan unos 105 cm³ de aire. No lo rellenes
+Las 6 tuercas quedan atrapadas dentro del plástico: hay que pausar la impresión, meterlas
+planas hasta el fondo de su hexágono (7.4 mm entre caras, 3.6 de alto) y reanudar. La pausa va
+**antes de la primera capa que tapa el hexágono**. Con capas de 0.20 mm, primera capa incluida:
+
+| Pieza | Pausa antes de la capa | Altura | Tuercas |
+|---|---|---|---|
+| `Latido_Frente.stl` | 32 | 6.2 mm | 2, en los postes de los puentes (pared derecha) |
+| `Latido_Frente.stl` | 154 | 30.6 mm | 3, en los postes de la tapa (esquinas) |
+| `Latido_Tapa.stl` | 56 | 11.0 mm | 1, en el poste de la grapa de la ESP32 |
+
+Con otro perfil o altura de capa, guíate por la altura y confirma en la vista previa del
+laminador que esa capa es la que cierra el hexágono. Sin soportes dentro de los hexágonos.
+`validacion_carcasa.json` trae estas mismas alturas.
+
+Todo el interior es la caja acústica de la bocina: quedan unos 106 cm³ de aire. No lo rellenes
 y, si quieres un sonido más redondo, pega un poco de guata detrás de la batería.
 
 ### Cambiar medidas

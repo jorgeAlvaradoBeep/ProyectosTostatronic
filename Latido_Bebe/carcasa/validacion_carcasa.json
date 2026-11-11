@@ -8,7 +8,7 @@
   "Latido_Frente": {
    "cerrada": true,
    "cuerpos": 1,
-   "volumen_cm3": 42.5,
+   "volumen_cm3": 47.1,
    "medidas_mm": [
     59.3,
     95.8,
@@ -22,7 +22,7 @@
    "medidas_mm": [
     59.3,
     95.8,
-    17.2
+    22.5
    ]
   },
   "Latido_Puente": {
@@ -32,21 +32,46 @@
    "medidas_mm": [
     55.4,
     8.0,
-    9.2
+    10.2
    ]
   },
   "Latido_Grapa_C3": {
    "cerrada": true,
    "cuerpos": 1,
-   "volumen_cm3": 0.7,
+   "volumen_cm3": 0.5,
    "medidas_mm": [
-    7.2,
-    34.6,
+    8.5,
+    30.4,
     3.0
    ]
   }
  },
  "choques_mm3": {},
  "aire_para_la_bocina_cm3": 106,
- "rejilla_barrenos": 71
+ "rejilla_barrenos": 71,
+ "pausas_para_tuercas_M4": {
+  "Latido_Frente": [
+   {
+    "altura_mm": 6.2,
+    "pausa_antes_de_la_capa": 32,
+    "tuercas": 2,
+    "donde": "postes de los puentes"
+   },
+   {
+    "altura_mm": 30.6,
+    "pausa_antes_de_la_capa": 154,
+    "tuercas": 3,
+    "donde": "postes de la tapa"
+   }
+  ],
+  "Latido_Tapa": [
+   {
+    "altura_mm": 11.0,
+    "pausa_antes_de_la_capa": 56,
+    "tuercas": 1,
+    "donde": "poste de la grapa de la C3"
+   }
+  ],
+  "nota": "capas de 0.2 mm, primera capa incluida; con otro perfil guiate por la altura"
+ }
 }
