@@ -11,6 +11,7 @@
 #include "bascula.h"
 #include "ajustes.h"
 #include "contador.h"
+#include "calibracion.h"
 #include "actualizador.h"
 #include "paginas.h"
 #include <WiFi.h>
@@ -44,8 +45,10 @@ void    (*avisoAvance)() = nullptr;
 // ---- calibracion desde la web ----
 bool      calAbierta = false;      // permiso abierto desde el menu de la bascula
 uint32_t  calHastaMs = 0;
-uint8_t   calPaso    = 0;          // 0 = falta el cero; 1 = cero tomado, falta el peso
+bool      calCeroTomado = false;   // ya se tomo el plato vacio
+uint8_t   calPuntos  = 0;          // pesos ya tomados (0..CAL_PUNTOS)
 int32_t   calCero    = 0;          // cuentas con el plato vacio
+PuntoCal  calPunto[CAL_PUNTOS];
 
 // ---- peso en vivo ----
 /* Cada navegador que muestra el peso deja abierta una conexion
@@ -58,7 +61,7 @@ struct Oyente {
 Oyente   oyentes[WEB_MAX_OYENTES];
 uint8_t  turnoOyente  = 0;         // a quien reemplazar si llega uno mas y no hay lugar
 uint32_t ultimoPesoMs = 0, ultimoEnvioMs = 0;
-char     pesoEnviado[720] = "";
+char     pesoEnviado[800] = "";
 
 // La Flash tiene DOS particiones de programa. Con una sola (Huge APP),
 // "la siguiente" es la misma que esta corriendo: escribir ahi borraria el
@@ -95,9 +98,9 @@ uint32_t calRestanteMs() {
   return restante > 0 ? restante : 0;
 }
 
-uint32_t calPesoMinimoG() {
-  return (uint32_t)ceilf(ajustes::actual().capacidadKg * 1000.0f * CAL_PESO_MIN_PORCIENTO / 100.0f);
-}
+// Gramos del peso que se tomo antes del que sigue (0 si es el primero).
+uint32_t calAnteriorG()      { return calPuntos ? calPunto[calPuntos - 1].gramos  : 0; }
+int32_t  calAnteriorCuentas(){ return calPuntos ? calPunto[calPuntos - 1].cuentas : calCero; }
 
 // ------------------ paginas ------------------
 
@@ -250,25 +253,36 @@ size_t armarPeso(char* destino, size_t tam) {
   Lectura     l  = bascula::leer();
   PerfilRuido pr = bascula::perfil();
 
-  // Tiempo real: lo crudo, lo filtrado y lo mostrado, en gramos brutos (sin
-  // tara), para la grafica de la pagina. Sin calibrar van en 0.
+  // Tiempo real: lo crudo y lo filtrado en gramos brutos CON signo (es
+  // diagnostico: ahi si importa ver si el cero se fue abajo), y lo mostrado
+  // tal como lo ve la pantalla, nunca negativo. Sin calibrar van en 0.
   float factor  = p.calibrada ? ajustes::actual().cal.factor : 0;
-  float crudoG  = factor ? p.brutoG + (l.crudo    - l.mostrado) / factor : 0;
-  float filtG   = factor ? p.brutoG + (l.filtrado - l.mostrado) / factor : 0;
+  float crudoG  = factor ? p.brutoRealG + (l.crudo    - l.mostrado) / factor : 0;
+  float filtG   = factor ? p.brutoRealG + (l.filtrado - l.mostrado) / factor : 0;
   float ppG     = factor ? l.ruidoPicoPico / fabsf(factor) : 0;
   float sigmaG  = factor && pr.valido ? pr.sigmaCuentas / fabsf(factor) : 0;
+
+  // Calibracion web: que peso sigue y entre que valores se acepta.
+  uint8_t  capKg = ajustes::actual().capacidadKg;
+  uint32_t sigG = 0, minG = 0, maxG = 0;
+  if (calPuntos < CAL_PUNTOS) {
+    sigG = calibracion::propuestaG(calPuntos, capKg, calAnteriorG());
+    minG = calibracion::minimoG(calPuntos, capKg, calAnteriorG());
+    maxG = calibracion::maximoG(calPuntos, capKg);
+  }
 
   int n = snprintf(destino, tam,
     "{\"celda\":%s,\"cal\":%s,\"estable\":%s,\"sobre\":%s,\"conTara\":%s,"
     "\"neto\":%.2f,\"tara\":%.2f,\"bruto\":%.2f,\"div\":%.1f,\"cap\":%.0f,\"unidad\":%u,"
     "\"pz\":{\"activo\":%s,\"unit\":%.4f,\"n\":%ld,\"exacto\":%.2f,\"ambiguo\":%s,\"confiable\":%s,\"perfil\":%d,\"nombre\":\"%s\"},"
-    "\"calWeb\":{\"seg\":%lu,\"paso\":%u,\"min\":%lu},"
+    "\"calWeb\":{\"seg\":%lu,\"cero\":%s,\"puntos\":%u,\"total\":%u,\"sig\":%lu,\"min\":%lu,\"max\":%lu},"
     "\"rt\":{\"crudo\":%.2f,\"filt\":%.2f,\"most\":%.2f,\"prog\":%.2f,\"pp\":%.2f,\"sps\":%.1f,\"sig\":%.3f,\"ven\":%u,\"asent\":%u}}",
     siNo(p.hayCelda), siNo(p.calibrada), siNo(p.estable), siNo(p.sobrecarga), siNo(p.conTara),
     p.netoG, p.taraG, p.brutoG, p.divisionG, p.capacidadG, (unsigned)ajustes::actual().unidad,
     siNo(c.activo), c.unitarioG, (long)c.piezas, c.exacto, siNo(c.ambiguo), siNo(c.confiable), c.perfil,
     escaparJson(c.nombre).c_str(),
-    (unsigned long)(calRestanteMs() / 1000), calPaso, (unsigned long)calPesoMinimoG(),
+    (unsigned long)(calRestanteMs() / 1000), siNo(calCeroTomado), calPuntos, CAL_PUNTOS,
+    (unsigned long)sigG, (unsigned long)minG, (unsigned long)maxG,
     crudoG, filtG, p.brutoG, l.progresoEstable, ppG, l.muestrasPorSegundo, sigmaG,
     (unsigned)(pr.valido ? pr.ventana : 0), (unsigned)(pr.valido ? pr.asentamientoMs : 0));
   return (n > 0 && (size_t)n < tam) ? (size_t)n : 0;
@@ -473,33 +487,56 @@ bool listaParaCalibrar(Lectura& l) {
 void rutaCalibrarCero() {
   Lectura l;
   if (!listaParaCalibrar(l)) return;
-  calCero = l.filtrado;
-  calPaso = 1;
+  calCero       = l.filtrado;
+  calCeroTomado = true;
+  calPuntos     = 0;
   responder(true);
 }
 
-void rutaCalibrarCarga() {
-  Lectura  l;
-  Ajustes& a = ajustes::actual();
-  long     gramos = servidor.arg("gramos").toInt();
+/* Un peso mas (gramos=...). Con el tercero se hace la cuenta: si los tres
+ * concuerdan se guarda y se cierra el permiso; si uno no concuerda se
+ * responde cual ("punto", desde 1) y se regresa a ese para repetirlo. */
+void rutaCalibrarPunto() {
+  Lectura l;
+  uint8_t capKg  = ajustes::actual().capacidadKg;
+  long    gramos = servidor.arg("gramos").toInt();
 
+  if (!calRestanteMs()) { responder(false, "sin_permiso"); return; }
+  if (!calCeroTomado || calPuntos >= CAL_PUNTOS) { responder(false, "sin_cero"); return; }
+  if (gramos < 1) { responder(false, "peso_invalido"); return; }
+  const char* motivo = calibracion::revisarPeso(calPuntos, (uint32_t)gramos, capKg, calAnteriorG());
+  if (motivo) { responder(false, motivo); return; }
   if (!listaParaCalibrar(l)) return;
-  if (calPaso != 1) { responder(false, "sin_cero"); return; }
-  if (gramos < (long)calPesoMinimoG() || gramos > a.capacidadKg * 1000L) { responder(false, "peso_invalido"); return; }
-  if (abs(l.filtrado - calCero) < CAL_CUENTAS_MINIMAS) { responder(false, "poco_cambio"); return; }
+  motivo = calibracion::revisarCuentas(calPuntos, l.filtrado, calCero, calAnteriorCuentas());
+  if (motivo) { responder(false, motivo); return; }
 
-  a.cal.factor = (float)(l.filtrado - calCero) / gramos;
-  a.cal.offset = calCero;
-  a.cal.valida = true;
-  a.pesoCalG   = gramos;
-  ajustes::guardar();
-  bascula::configurar(a.cal, a.capacidadKg);
+  calPunto[calPuntos].gramos  = (uint32_t)gramos;
+  calPunto[calPuntos].cuentas = l.filtrado;
+  calPuntos++;
 
-  Serial.printf("[calibracion web] cero=%ld  carga=%ld  peso=%ld g  factor=%.3f cuentas/g\n",
-                (long)calCero, (long)l.filtrado, gramos, a.cal.factor);
-  calPaso    = 0;
-  calAbierta = false;      // un permiso, una calibracion
-  responder(true);
+  char json[120];
+  if (calPuntos < CAL_PUNTOS) {
+    snprintf(json, sizeof(json), "{\"ok\":true,\"puntos\":%u,\"sig\":%lu}", calPuntos,
+             (unsigned long)calibracion::propuestaG(calPuntos, capKg, calAnteriorG()));
+    servidor.send(200, "application/json", json);
+    return;
+  }
+
+  ResultadoCal r = calibracion::calcular(calCero, calPunto, bascula::peso().divisionG);
+  if (!r.ok) {
+    calPuntos = r.puntoMalo;    // se repite desde ese
+    snprintf(json, sizeof(json), "{\"ok\":false,\"motivo\":\"no_concuerda\",\"punto\":%u,\"desvio\":%.1f}",
+             r.puntoMalo + 1, fabsf(r.desvioMaloG));
+    servidor.send(409, "application/json", json);
+    return;
+  }
+
+  calibracion::guardar(calCero, calPunto, r);
+  calCeroTomado = false;
+  calPuntos     = 0;
+  calAbierta    = false;      // un permiso, una calibracion
+  snprintf(json, sizeof(json), "{\"ok\":true,\"listo\":true,\"factor\":%.2f,\"desvio\":%.2f}", fabsf(r.factor), r.desvioMaxG);
+  servidor.send(200, "application/json", json);
 }
 
 // ------------------ actualizacion de firmware ------------------
@@ -623,7 +660,7 @@ void arrancar() {
 
     // calibracion y firmware (los dos piden permiso desde la bascula)
     servidor.on("/calibrar/cero", HTTP_POST, rutaCalibrarCero);
-    servidor.on("/calibrar/carga", HTTP_POST, rutaCalibrarCarga);
+    servidor.on("/calibrar/punto", HTTP_POST, rutaCalibrarPunto);
     servidor.on("/actualizar", HTTP_GET, rutaActualizar);
     servidor.on("/actualizar", HTTP_POST, rutaSubidaFin, rutaSubida);
 
@@ -657,7 +694,7 @@ void atender() {
     ESP.restart();
   }
   if ((ota == OTA_ABIERTA || ota == OTA_ERROR) && (int32_t)(ahora - otaHastaMs) >= 0) ota = OTA_CERRADA;
-  if (calAbierta && !calRestanteMs()) { calAbierta = false; calPaso = 0; }
+  if (calAbierta && !calRestanteMs()) { calAbierta = false; calCeroTomado = false; calPuntos = 0; }
 }
 
 void permitirActualizacion(bool si) {
@@ -689,7 +726,8 @@ Actualizacion actualizacion() {
 void permitirCalibracion(bool si) {
   calAbierta = si && corriendo;
   calHastaMs = millis() + CAL_WEB_VENTANA_MS;
-  calPaso    = 0;
+  calCeroTomado = false;
+  calPuntos     = 0;
 }
 
 void confirmarFirmware() {

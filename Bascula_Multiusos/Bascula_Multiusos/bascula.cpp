@@ -336,12 +336,15 @@ Peso peso() {
   p.progresoEstable = l.progresoEstable;
 
   if (c.valida) {
-    p.brutoG     = (l.mostrado - cero) / c.factor;   // con el ultimo digito retenido
+    p.brutoRealG = (l.mostrado - cero) / c.factor;   // con el ultimo digito retenido
     p.taraG      = tara ? tara / c.factor : 0;   // sin "-0.00" cuando no hay tara
-    p.netoG      = p.brutoG - p.taraG;
+    p.netoG      = p.brutoRealG - p.taraG;
     p.conTara    = tara != 0;
     // Como en las comerciales: se permite pasar la capacidad por 9 divisiones.
-    p.sobrecarga = l.estado == HX_SATURADO || p.brutoG > p.capacidadG + 9 * p.divisionG;
+    p.sobrecarga = l.estado == HX_SATURADO || p.brutoRealG > p.capacidadG + 9 * p.divisionG;
+    // Nunca se muestran pesos negativos (ver bascula.h).
+    p.brutoG     = p.brutoRealG > 0 ? p.brutoRealG : 0;
+    if (p.netoG < 0) p.netoG = 0;
   }
   return p;
 }

@@ -13,6 +13,7 @@
 
 #pragma once
 #include <Arduino.h>
+#include "config.h"
 #include "bascula.h"
 
 enum Unidad : uint8_t { UNIDAD_G, UNIDAD_KG, UNIDAD_OZ, NUM_UNIDADES };
@@ -22,7 +23,7 @@ struct Ajustes {
   PerfilRuido ruido;               // lo aprendido en MENU > Afinar ruido
   uint8_t     capacidadKg = 1;
   Unidad      unidad      = UNIDAD_G;
-  uint32_t    pesoCalG    = 500;   // ultimo peso de calibracion: se propone la siguiente vez
+  uint32_t    pesoCalG[CAL_PUNTOS] = { 0, 0, 0 };   // ultimos pesos de calibracion: se proponen la siguiente vez (0 = los de config.h)
   uint8_t     brillo      = 200;
 };
 

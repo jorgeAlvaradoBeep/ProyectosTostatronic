@@ -5,85 +5,131 @@
  * ============================================================
  *
  *  Una celda de carga entrega "cuentas", no gramos. Calibrar es
- *  encontrar dos numeros:
+ *  encontrar el cero y el factor (cuentas por gramo). Se hace con
+ *  el plato vacio y TRES pesos conocidos, de menor a mayor: con
+ *  uno solo, una pesa equivocada se copia a todo el rango y nadie
+ *  lo nota; con tres, la que no concuerda se delata (la cuenta
+ *  esta en calibracion.h).
  *
- *    offset  cuentas con el plato vacio
- *    factor  cuentas por gramo = (cuentas con peso - offset) / gramos
+ *  Paso 1  Plato vacio ............ OK toma el cero
+ *  Paso 2  Peso bajo (p. ej. 200 g) ARRIBA / ABAJO ajusta cuanto
+ *  Paso 3  Peso medio (500 g)       pesa lo que se puso; OK lo
+ *  Paso 4  Peso alto (1000 g)       toma cuando la lectura esta
+ *                                   ESTABLE (anillo verde)
  *
- *  Paso 1  Plato vacio ............ OK toma el offset
- *  Paso 2  Peso conocido encima ... OK toma las cuentas con peso
- *  Paso 3  Cuanto pesa ............ ARRIBA / ABAJO, OK guarda
+ *  Si un peso no concuerda con los otros dos, se avisa cual y se
+ *  repite desde ese; nada se guarda hasta que los tres concuerden.
+ *  Al final se muestra el factor y lo mas que se aparto un peso.
  *
- *  Las capturas solo se hacen con la lectura ESTABLE (el anillo
- *  se llena mientras se asienta y se pone verde). Si se presiona
- *  OK antes, se espera a que se asiente.
- *
- *  MENU corta regresa un paso (o sale, desde el primero).
+ *  La bascula propone los pesos (20, 50 y 100 % de la capacidad, o
+ *  los que se usaron la ultima vez). MENU corta regresa un paso
+ *  (o sale, desde el primero).
  * ============================================================
  */
 
 #include "ui_comun.h"
+#include "calibracion.h"
 
 namespace ui {
 namespace vCalibrar {
 
 namespace {
 
-enum Paso : uint8_t { PASO_CERO, PASO_CARGA, PASO_VALOR, PASO_LISTO };
+enum Paso : uint8_t { PASO_CERO, PASO_PUNTO, PASO_REVISAR, PASO_LISTO };
+
+const char* const NOMBRE_PUNTO[CAL_PUNTOS] = { "bajo", "medio", "alto" };
 
 Paso     paso = PASO_CERO;
+uint8_t  indice = 0;            // que peso se esta tomando (0..CAL_PUNTOS-1)
 bool     primerArranque = false;
-int32_t  cuentasCero = 0, cuentasCarga = 0;
-uint32_t valorG = 500;
+int32_t  cuentasCero = 0;
+PuntoCal puntos[CAL_PUNTOS];
+uint32_t valorG = 0;            // gramos del peso actual (lo que ajusta ARRIBA / ABAJO)
 uint16_t repeticiones = 0;      // para acelerar ARRIBA / ABAJO sostenidas
 bool     esperando = false;     // OK presionado, falta que se asiente
 uint32_t esperaHastaMs = 0;
-float    factorNuevo = 0;
+ResultadoCal resultado;
 
-uint32_t capacidadG() { return ajustes::actual().capacidadKg * 1000UL; }
+uint8_t  capacidadKg()    { return ajustes::actual().capacidadKg; }
+uint32_t anteriorG()      { return indice ? puntos[indice - 1].gramos  : 0; }
+int32_t  anteriorCuentas(){ return indice ? puntos[indice - 1].cuentas : cuentasCero; }
+
+// "0.2 g" con los decimales de la celda.
+void textoGramos(float g, char* texto, size_t tam) {
+  if (bascula::peso().divisionG < 1.0f) snprintf(texto, tam, "%.1f g", g);
+  else                                   snprintf(texto, tam, "%.0f g", g);
+}
+
+// Peso con el que arranca el punto 'indice': el que ya se habia tomado
+// (si se esta repitiendo) o el que propone la bascula.
+void proponer() {
+  uint32_t g = puntos[indice].gramos;
+  if (!g || calibracion::revisarPeso(indice, g, capacidadKg(), anteriorG())) g = calibracion::propuestaG(indice, capacidadKg(), anteriorG());
+  valorG = g;
+  repeticiones = 0;
+}
 
 void mostrarPaso() {
   limpiarVista();
   esperando = false;
-  char texto[40];
+  char texto[40], gramos[16];
 
-  if (paso == PASO_LISTO) {
-    pintar(zTitulo, "LISTO", COLOR_VERDE);
-    pintar(zLinea1, "Calibración", COLOR_TEXTO);
-    pintar(zLinea2, "guardada", COLOR_TEXTO);
-    snprintf(texto, sizeof(texto), "%.1f cuentas por gramo", fabsf(factorNuevo));
-    pintar(zDato, texto, COLOR_TENUE);
-    pintar(zPie, "OK: pesar", COLOR_TENUE);
-    anillo(1.0f, COLOR_VERDE);
-    return;
-  }
-
-  pintar(zTitulo, "CALIBRAR", COLOR_AZUL);
   switch (paso) {
+    case PASO_LISTO:
+      pintar(zTitulo, "LISTO", COLOR_VERDE);
+      pintar(zLinea1, "Calibración guardada", COLOR_TEXTO);
+      textoGramos(resultado.desvioMaxG, gramos, sizeof(gramos));
+      snprintf(texto, sizeof(texto), "desvío máximo %s", gramos);
+      pintar(zLinea2, texto, COLOR_TEXTO);
+      snprintf(texto, sizeof(texto), "%.1f cuentas por gramo", fabsf(resultado.factor));
+      pintar(zDato, texto, COLOR_TENUE);
+      pintar(zPie, "OK: pesar", COLOR_TENUE);
+      anillo(1.0f, COLOR_VERDE);
+      return;
+
+    case PASO_REVISAR:
+      pintar(zTitulo, "REVISA", COLOR_NARANJA);
+      snprintf(texto, sizeof(texto), "El peso %u no concuerda", resultado.puntoMalo + 1);
+      pintar(zLinea1, texto, COLOR_TEXTO);
+      textoGramos(fabsf(resultado.desvioMaloG), gramos, sizeof(gramos));
+      snprintf(texto, sizeof(texto), "se aparta %s", gramos);
+      pintar(zLinea2, texto, COLOR_TEXTO);
+      pintar(zDato, "de los otros · ¿pesa eso?", COLOR_TENUE);
+      pintar(zPie, "OK: repetir desde ahí", COLOR_TENUE);
+      anillo(1.0f, COLOR_NARANJA);
+      return;
+
     case PASO_CERO:
+      pintar(zTitulo, "CALIBRAR", COLOR_AZUL);
       pintar(zLinea1, "Retira todo", COLOR_TEXTO);
       pintar(zLinea2, "el peso del plato", COLOR_TEXTO);
       pintar(zPie, "OK: tomar el cero", COLOR_TENUE);
-      break;
-    case PASO_CARGA:
-      pintar(zLinea1, "Coloca un peso", COLOR_TEXTO);
-      pintar(zLinea2, "conocido", COLOR_TEXTO);
-      pintar(zPie, "OK: continuar", COLOR_TENUE);
-      break;
-    default:   // PASO_VALOR
-      pintar(zUnidad, "g", COLOR_TENUE);
-      pintar(zEstado, "ARRIBA / ABAJO: ajustar", COLOR_TENUE);
-      pintar(zPie, "OK: guardar", COLOR_TENUE);
-      break;
+      return;
+
+    default:   // PASO_PUNTO
+      pintar(zTitulo, "CALIBRAR", COLOR_AZUL);
+      pintar(zUnidad, "g · ARRIBA/ABAJO", COLOR_TENUE);
+      pintar(zPie, "OK: tomar el peso", COLOR_TENUE);
+      return;
   }
 }
 
-const char* textoPaso() {
-  switch (paso) {
-    case PASO_CERO:  return primerArranque ? "Primer uso · paso 1 de 3" : "Paso 1 de 3";
-    case PASO_CARGA: return "Paso 2 de 3";
-    default:         return "Paso 3 · ¿cuánto pesa?";
-  }
+void textoPaso(char* texto, size_t tam) {
+  if (paso == PASO_CERO) strlcpy(texto, primerArranque ? "Primer uso · paso 1 de 4" : "Paso 1 de 4", tam);
+  else snprintf(texto, tam, "Peso %u de %u · %s", indice + 1, CAL_PUNTOS, NOMBRE_PUNTO[indice]);
+}
+
+// El peso escrito no sirve: se explica por que (mismos motivos que la web).
+void avisarPeso(const char* motivo) {
+  char texto[40];
+  if (strcmp(motivo, "orden_pesos") == 0)
+    snprintf(texto, sizeof(texto), "Debe ser mayor que %lu g", (unsigned long)anteriorG());
+  else if (strcmp(motivo, "peso_alto") == 0)
+    snprintf(texto, sizeof(texto), "El último: al menos %lu g", (unsigned long)calibracion::minimoG(indice, capacidadKg(), anteriorG()));
+  else
+    snprintf(texto, sizeof(texto), "Usa de %lu a %lu g", (unsigned long)calibracion::minimoG(indice, capacidadKg(), anteriorG()),
+             (unsigned long)calibracion::maximoG(indice, capacidadKg()));
+  aviso(texto, COLOR_NARANJA, 2500);
 }
 
 // Se llama cuando la lectura ya esta estable.
@@ -91,43 +137,35 @@ void capturar(const Lectura& l) {
   esperando = false;
   if (paso == PASO_CERO) {
     cuentasCero = l.filtrado;
-    paso = PASO_CARGA;
+    paso = PASO_PUNTO;
+    indice = 0;
+    proponer();
     mostrarPaso();
     return;
   }
-  // PASO_CARGA
-  if (abs(l.filtrado - cuentasCero) < CAL_CUENTAS_MINIMAS) {
-    aviso("Casi no cambió: pon más peso", COLOR_NARANJA, 2500);
+
+  // PASO_PUNTO
+  if (calibracion::revisarCuentas(indice, l.filtrado, cuentasCero, anteriorCuentas())) {
+    aviso(indice ? "Casi no cambió: ¿pusiste el peso?" : "Casi no cambió: pon más peso", COLOR_NARANJA, 2500);
     return;
   }
-  cuentasCarga = l.filtrado;
-  valorG = constrain(ajustes::actual().pesoCalG, 1UL, capacidadG());
-  repeticiones = 0;
-  paso = PASO_VALOR;
-  mostrarPaso();
-}
+  puntos[indice].gramos  = valorG;
+  puntos[indice].cuentas = l.filtrado;
 
-void guardar() {
-  uint32_t minimoG = (uint32_t)ceilf(capacidadG() * CAL_PESO_MIN_PORCIENTO / 100.0f);
-  if (valorG < minimoG) {
-    char texto[40];
-    snprintf(texto, sizeof(texto), "Usa al menos %lu g", (unsigned long)minimoG);
-    aviso(texto, COLOR_NARANJA, 2500);
+  if (indice + 1 < CAL_PUNTOS) {
+    indice++;
+    proponer();
+    mostrarPaso();
     return;
   }
 
-  factorNuevo = (float)(cuentasCarga - cuentasCero) / valorG;
-
-  Ajustes& a = ajustes::actual();
-  a.cal.factor = factorNuevo;
-  a.cal.offset = cuentasCero;
-  a.cal.valida = true;
-  a.pesoCalG   = valorG;
-  ajustes::guardar();
-  bascula::configurar(a.cal, a.capacidadKg);
-
-  Serial.printf("[calibracion] cero=%ld  carga=%ld  peso=%lu g  factor=%.3f cuentas/g\n",
-                (long)cuentasCero, (long)cuentasCarga, (unsigned long)valorG, factorNuevo);
+  resultado = calibracion::calcular(cuentasCero, puntos, bascula::peso().divisionG);
+  if (!resultado.ok) {
+    paso = PASO_REVISAR;
+    mostrarPaso();
+    return;
+  }
+  calibracion::guardar(cuentasCero, puntos, resultado);
   paso = PASO_LISTO;
   mostrarPaso();
 }
@@ -145,6 +183,8 @@ uint32_t incremento() {
 void entrar(bool primero) {
   primerArranque = primero;
   paso = PASO_CERO;
+  indice = 0;
+  for (uint8_t i = 0; i < CAL_PUNTOS; i++) puntos[i] = PuntoCal();
   mostrarPaso();
 }
 
@@ -152,25 +192,39 @@ void tecla(const EventoTecla& e) {
   switch (e.tecla) {
     case TECLA_MENU:
       if (e.tipo != PULSACION_CORTA) return;
-      if (paso == PASO_CERO || paso == PASO_LISTO) { irA(paso == PASO_LISTO ? V_PESAR : V_MENU); return; }
-      paso = (Paso)(paso - 1);
+      if (paso == PASO_LISTO)                           { irA(V_PESAR); return; }
+      if (paso == PASO_CERO || paso == PASO_REVISAR)    { irA(V_MENU);  return; }
+      // PASO_PUNTO: al peso anterior (se vuelve a tomar) o al cero.
+      if (indice == 0) paso = PASO_CERO;
+      else { indice--; proponer(); }
       mostrarPaso();
       break;
 
     case TECLA_OK:
       if (e.tipo != PULSACION_CORTA) return;
-      if (paso == PASO_LISTO) { irA(V_PESAR); return; }
-      if (paso == PASO_VALOR) { guardar(); return; }
+      if (paso == PASO_LISTO)   { irA(V_PESAR); return; }
+      if (paso == PASO_REVISAR) {
+        paso = PASO_PUNTO;
+        indice = resultado.puntoMalo;
+        proponer();
+        mostrarPaso();
+        return;
+      }
+      if (paso == PASO_PUNTO) {
+        const char* motivo = calibracion::revisarPeso(indice, valorG, capacidadKg(), anteriorG());
+        if (motivo) { avisarPeso(motivo); return; }
+      }
       if (bascula::leer().estable) capturar(bascula::leer());
       else { esperando = true; esperaHastaMs = millis() + ESPERA_ESTABLE_MS; }
       break;
 
     case TECLA_ARRIBA:
     case TECLA_ABAJO: {
-      if (paso != PASO_VALOR) return;
+      if (paso != PASO_PUNTO) return;
       if (e.tipo != PULSACION_CORTA) repeticiones++;
-      uint32_t delta = incremento();
-      if (e.tecla == TECLA_ARRIBA) valorG = min(valorG + delta, capacidadG());
+      uint32_t delta  = incremento();
+      uint32_t maximo = calibracion::maximoG(indice, capacidadKg());
+      if (e.tecla == TECLA_ARRIBA) valorG = min(valorG + delta, maximo);
       else                         valorG = valorG > delta ? valorG - delta : 1;
       break;
     }
@@ -180,26 +234,23 @@ void tecla(const EventoTecla& e) {
 }
 
 void refrescar() {
-  if (paso == PASO_LISTO) return;
-  if (!avisoVigente()) pintar(zAviso, textoPaso(), COLOR_TENUE);
+  if (paso == PASO_LISTO || paso == PASO_REVISAR) return;
 
   char texto[40];
+  if (!avisoVigente()) { textoPaso(texto, sizeof(texto)); pintar(zAviso, texto, COLOR_TENUE); }
 
-  if (paso == PASO_VALOR) {
+  Lectura l = bascula::leer();
+  bool hayCelda = l.estado != HX_SIN_RESPUESTA && !l.doutAlAire;
+
+  if (paso == PASO_PUNTO) {
     snprintf(texto, sizeof(texto), "%lu", (unsigned long)valorG);
     pintarNumero(zNumero, texto, COLOR_TEXTO);
     // Al soltar ARRIBA / ABAJO la velocidad vuelve a uno en uno.
     if (!teclado::presionada(TECLA_ARRIBA) && !teclado::presionada(TECLA_ABAJO)) repeticiones = 0;
-    return;
+  } else {
+    snprintf(texto, sizeof(texto), "lectura: %ld", (long)l.filtrado);
+    pintar(zDato, hayCelda ? texto : "", COLOR_TENUE);
   }
-
-  // Pasos 1 y 2: la lectura en vivo y que tan asentada esta.
-  Lectura l = bascula::leer();
-  bool hayCelda = l.estado != HX_SIN_RESPUESTA && !l.doutAlAire;
-
-  if (paso == PASO_CERO) snprintf(texto, sizeof(texto), "lectura: %ld", (long)l.filtrado);
-  else                   snprintf(texto, sizeof(texto), "cambio: %ld cuentas", (long)(l.filtrado - cuentasCero));
-  pintar(zDato, hayCelda ? texto : "", COLOR_TENUE);
 
   if (!hayCelda) {
     pintar(zEstado, "SIN CELDA: revisa el HX711", COLOR_NARANJA);

@@ -29,9 +29,14 @@ void cargar() {
   datos.cal.valida  = nvs.getBool("cal", false);
   datos.cal.factor  = nvs.getFloat("factor", 0);
   datos.cal.offset  = nvs.getInt("offset", 0);
+  datos.cal.desvioG = nvs.getFloat("calDesv", 0);
   datos.capacidadKg = nvs.getUChar("capKg", CELDAS[0].capacidadKg);
   datos.unidad      = (Unidad)nvs.getUChar("unidad", UNIDAD_G);
-  datos.pesoCalG    = nvs.getUInt("pesoCal", 500);
+  // Firmwares anteriores (un solo peso) guardaban "pesoCal": se ignora y
+  // se proponen los pesos de config.h hasta la primera calibracion nueva.
+  datos.pesoCalG[0] = nvs.getUInt("pesoCal1", 0);
+  datos.pesoCalG[1] = nvs.getUInt("pesoCal2", 0);
+  datos.pesoCalG[2] = nvs.getUInt("pesoCal3", 0);
   datos.brillo      = nvs.getUChar("brillo", TFT_BRILLO);
   datos.ruido.valido         = nvs.getBool("ruidoOk", false);
   datos.ruido.sigmaCuentas   = nvs.getFloat("ruidoSig", 0);
@@ -41,6 +46,7 @@ void cargar() {
 
   // Nada de lo leido se usa a ciegas: un factor 0 o NaN dividiria entre cero.
   if (!(fabsf(datos.cal.factor) > 0.01f) || isnan(datos.cal.factor)) datos.cal.valida = false;
+  if (isnan(datos.cal.desvioG) || datos.cal.desvioG < 0) datos.cal.desvioG = 0;
   if (isnan(datos.ruido.sigmaCuentas) || datos.ruido.sigmaCuentas < 0 ||
       datos.ruido.ventana < ruido::VENTANA_MIN || datos.ruido.ventana > ruido::VENTANA_MAX) datos.ruido.valido = false;
   if (!capacidadValida(datos.capacidadKg)) datos.capacidadKg = CELDAS[0].capacidadKg;
@@ -53,9 +59,12 @@ void guardar() {
   nvs.putBool("cal", datos.cal.valida);
   nvs.putFloat("factor", datos.cal.factor);
   nvs.putInt("offset", datos.cal.offset);
+  nvs.putFloat("calDesv", datos.cal.desvioG);
   nvs.putUChar("capKg", datos.capacidadKg);
   nvs.putUChar("unidad", datos.unidad);
-  nvs.putUInt("pesoCal", datos.pesoCalG);
+  nvs.putUInt("pesoCal1", datos.pesoCalG[0]);
+  nvs.putUInt("pesoCal2", datos.pesoCalG[1]);
+  nvs.putUInt("pesoCal3", datos.pesoCalG[2]);
   nvs.putUChar("brillo", datos.brillo);
   nvs.putBool("ruidoOk", datos.ruido.valido);
   nvs.putFloat("ruidoSig", datos.ruido.sigmaCuentas);

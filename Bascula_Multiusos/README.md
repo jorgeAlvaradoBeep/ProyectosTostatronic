@@ -79,14 +79,28 @@ pierde (la NVS queda en el mismo lugar).
 1. **Retira todo el peso** y presiona **OK**. El anillo se llena mientras la
    lectura se asienta y se pone verde al estar estable; si presionas OK antes,
    espera a que se asiente.
-2. **Coloca un peso conocido** (lo que sepas cuánto pesa: una pesa, una lata,
-   un vaso con agua pesado en otra báscula) y presiona **OK**.
-3. **Escribe cuánto pesa** con ▲ / ▼ (sostenidas van más rápido) y **OK**.
+2. **Peso bajo.** La báscula propone 200 g (el 20 % de la capacidad). Pon un
+   peso conocido (una pesa, una lata, un vaso con agua pesado en otra báscula),
+   escribe cuánto pesa con ▲ / ▼ (sostenidas van más rápido) y presiona **OK**
+   cuando esté estable.
+3. **Peso medio** (propone 500 g) y **4. peso alto** (propone 1000 g): lo
+   mismo. Cada peso debe ser mayor que el anterior y el último, de al menos la
+   mitad de la capacidad.
 
-El factor y el cero se guardan en la NVS: sobreviven a apagar la placa. Para
-recalibrar: **MENÚ → Calibrar**. Usa un peso de al menos el 5 % de la
-capacidad de la celda (50 g con la de 1 kg); entre más cerca de la capacidad,
-mejor.
+Con el tercero se hace la cuenta: el factor sale de la recta que mejor pasa por
+los tres pesos (los grandes pesan más en la cuenta, porque son los de mejor
+señal). Si uno **no concuerda** con los otros dos (se aparta más del 1 %), la
+pantalla dice cuál y cuánto, no guarda nada y se repite desde ese peso: así una
+pesa mal etiquetada no se copia a todo el rango. Al terminar muestra el factor y
+el **desvío máximo** (lo más que se apartó un peso de la recta): entre más
+chico, mejor quedó.
+
+El factor y el cero se guardan en la NVS: sobreviven a apagar la placa y a
+actualizar el firmware. Para recalibrar: **MENÚ → Calibrar**; propone los
+últimos pesos que usaste. **MENÚ** corta regresa un paso.
+
+La pantalla **nunca muestra pesos negativos**: si el cero derivó hacia arriba o
+quitas algo que estaba al tarar, marca 0 (y OK larga vuelve a tomar el cero).
 
 **Pesando:**
 
@@ -191,7 +205,9 @@ al revés: son la misma báscula. Hasta 4 navegadores a la vez.
 y entra a `http://192.168.4.1/bascula`.
 
 **Recalibrar desde la página** pide permiso desde las teclas, igual que el
-firmware: **MENÚ → Conexión → OK → Calibrar web** abre 5 minutos. Tara, cero,
+firmware: **MENÚ → Conexión → OK → Calibrar web** abre 5 minutos. Es el mismo
+asistente de tres pesos: cero, y luego peso bajo, medio y alto; con el tercero
+se guarda, y si alguno no concuerda la página dice cuál repetir. Tara, cero,
 unidad y conteo no piden permiso: cualquiera en tu red puede usarlos.
 
 ---

@@ -55,9 +55,10 @@ struct Lectura {
 };
 
 struct Calibracion {
-  float   factor = 0;    // cuentas por gramo (con signo)
-  int32_t offset = 0;    // cuentas con el plato vacio al calibrar
-  bool    valida = false;
+  float   factor  = 0;    // cuentas por gramo (con signo)
+  int32_t offset  = 0;    // cuentas con el plato vacio al calibrar
+  float   desvioG = 0;    // lo mas que se aparto un peso de la recta al calibrar (ver calibracion.h)
+  bool    valida  = false;
 };
 
 // El peso ya en gramos, listo para mostrarse.
@@ -69,9 +70,14 @@ struct Peso {
   float  progresoEstable = 0;
   bool   sobrecarga      = false;
   bool   conTara         = false;
-  float  brutoG          = 0;       // desde el cero
+  // Nunca se muestran pesos negativos: bruto y neto se recortan en 0 (si
+  // el cero derivo hacia arriba o se quito algo que estaba al tarar, la
+  // pantalla marca 0 y no "-0.3"). brutoRealG trae el valor sin recortar,
+  // solo para el diagnostico y la grafica de tiempo real.
+  float  brutoG          = 0;       // desde el cero, nunca negativo
+  float  brutoRealG      = 0;       // desde el cero, con signo
   float  taraG           = 0;
-  float  netoG           = 0;       // bruto - tara: lo que se muestra
+  float  netoG           = 0;       // bruto - tara: lo que se muestra, nunca negativo
   float  divisionG       = 0.1f;
   float  capacidadG      = 1000;
 };

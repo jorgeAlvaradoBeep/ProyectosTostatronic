@@ -112,7 +112,7 @@ static void tecla(Tecla t, TipoPulsacion tipo = PULSACION_CORTA) { EventoTecla e
 
 int main() {
   pantalla::iniciar();
-  ajustesFalsos.cal.valida = true; ajustesFalsos.cal.factor = -681.2f; ajustesFalsos.pesoCalG = 441;
+  ajustesFalsos.cal.valida = true; ajustesFalsos.cal.factor = -681.2f;   // pesoCalG en 0: propone 200, 500 y 1000 g
 
   ui::arranque(2500);                                                     guardar("01_arranque");
 
@@ -120,7 +120,7 @@ int main() {
   ui::iniciar();
   lecturaFalsa = lectura(HX_OK, -352530, 10.4f, 120, true);
   pesoFalso = peso(441.0f, true);                 ui::refrescar();        guardar("02_pesar_estable");
-  pesoFalso = peso(-12.3f, false);                ui::refrescar();        guardar("03_pesar_midiendo_negativo");
+  pesoFalso = peso(12.3f, false);                 ui::refrescar();        guardar("03_pesar_midiendo");   // (la bascula real nunca entrega negativos)
   pesoFalso = peso(318.6f, true, 122.4f);         ui::refrescar();        guardar("04_pesar_neto_con_tara");
   ajustesFalsos.unidad = UNIDAD_KG; pesoFalso = peso(999.9f, true);  ui::refrescar(); guardar("05_pesar_kg");
   ajustesFalsos.unidad = UNIDAD_OZ;                                  ui::refrescar(); guardar("06_pesar_oz");
@@ -144,9 +144,18 @@ int main() {
   ui::tecla({ TECLA_MENU, PULSACION_LARGA }); tecla(TECLA_MENU); tecla(TECLA_ARRIBA); tecla(TECLA_OK);  // menu (recuerda Ajustes) -> Calibrar
   lecturaFalsa = lectura(HX_OK, -52145, 10.4f, 120, false, 0.6f);    ui::refrescar(); guardar("15_calibrar_paso1_asentandose");
   lecturaFalsa.estable = true; lecturaFalsa.progresoEstable = 1;     ui::refrescar(); guardar("16_calibrar_paso1_estable");
-  tecla(TECLA_OK);                                                   // toma el cero
-  lecturaFalsa = lectura(HX_OK, -352530, 10.4f, 150, true);          ui::refrescar(); guardar("17_calibrar_paso2");
-  tecla(TECLA_OK);                                                   ui::refrescar(); guardar("18_calibrar_paso3_valor");
+  tecla(TECLA_OK);                                                   // toma el cero (-52145)
+  // Tres pesos con factor -681.2 cuentas/g: 200, 500 y 1000 g.
+  lecturaFalsa = lectura(HX_OK, -188385, 10.4f, 150, false, 0.5f);   ui::refrescar(); guardar("17_calibrar_peso1_asentandose");
+  lecturaFalsa.estable = true; lecturaFalsa.progresoEstable = 1;     ui::refrescar(); guardar("17b_calibrar_peso1_estable");
+  tecla(TECLA_OK);                                                   // toma el peso 1
+  lecturaFalsa = lectura(HX_OK, -392745, 10.4f, 150, true);          ui::refrescar(); guardar("18_calibrar_peso2");
+  tecla(TECLA_OK);                                                   // toma el peso 2
+  lecturaFalsa = lectura(HX_OK, -713000, 10.4f, 150, true);          ui::refrescar(); guardar("18b_calibrar_peso3");
+  tecla(TECLA_OK);                                                   // peso 3 con 30 g de menos: no concuerda
+                                                                     ui::refrescar(); guardar("18c_calibrar_revisa");
+  tecla(TECLA_OK);                                                   // repetir desde el peso 3
+  lecturaFalsa = lectura(HX_OK, -733345, 10.4f, 150, true);          ui::refrescar(); guardar("18d_calibrar_peso3_repetido");
   tecla(TECLA_OK);                                                   ui::refrescar(); guardar("19_calibrar_listo");
 
   // Primer arranque, sin calibracion

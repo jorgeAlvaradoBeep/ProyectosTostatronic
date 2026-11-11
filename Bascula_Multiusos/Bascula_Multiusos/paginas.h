@@ -389,15 +389,19 @@ const char PAGINA_BASCULA[] PROGMEM = R"HTML(<!DOCTYPE html>
       <ol>
         <li>En la báscula: <b>MENÚ → Conexión → OK → Calibrar web</b>.</li>
         <li>Retira todo del plato y toca <b>Tomar el cero</b>.</li>
-        <li>Pon un peso conocido, escribe cuánto pesa y toca <b>Guardar</b>.</li>
+        <li>Pon <b>tres pesos conocidos</b>, de menor a mayor (bajo, medio y alto):
+            escribe cuánto pesa cada uno y toca <b>Tomar el peso</b>. Con el tercero
+            se guarda la calibración; si alguno no concuerda con los otros dos,
+            la báscula avisa cuál y se repite desde ese.</li>
       </ol>
       <div class="acciones">
         <button id="btnCalCero" class="borde" disabled>1 · Tomar el cero (plato vacío)</button>
         <div>
-          <label for="calGramos">Peso conocido, en gramos</label>
-          <input id="calGramos" type="number" inputmode="numeric" min="1" value="500">
+          <label for="calGramos" id="calEtiqueta">Peso 1 de 3 (bajo), en gramos</label>
+          <input id="calGramos" type="number" inputmode="numeric" min="1" value="200">
         </div>
-        <button id="btnCalCarga" disabled>2 · Guardar calibración</button>
+        <button id="btnCalPunto" disabled>2 · Tomar el peso 1 de 3</button>
+        <p id="calAvance" class="nota"></p>
       </div>
     </div>
 
@@ -424,9 +428,12 @@ const MOTIVOS={
   sin_permiso:'Abre el permiso en la báscula: MENÚ → Conexión → OK → Calibrar web.',
   sin_cero:'Primero toma el cero con el plato vacío.',
   peso_invalido:'Ese peso no sirve para calibrar esta celda.',
-  poco_cambio:'La lectura casi no cambió: pon más peso.'
+  orden_pesos:'Cada peso debe ser mayor que el anterior.',
+  peso_alto:'El último peso debe ser al menos la mitad de la capacidad de la celda.',
+  poco_cambio:'La lectura casi no cambió: ¿ya pusiste el peso?'
 };
-let e=null, ultimoMs=0, avisoT=null, piezas=[], perfilPintado=-2, armado=false, nombreAp='Tostatronic-Bascula', olvidada=false;
+let e=null, ultimoMs=0, avisoT=null, piezas=[], perfilPintado=-2, armado=false, nombreAp='Tostatronic-Bascula', olvidada=false, calPuntoPintado=-1;
+const CAL_NOMBRES=['bajo','medio','alto'];
 
 function aviso(t,bien){
   const a=$('aviso');a.textContent=t||'';a.hidden=!t;a.className='aviso'+(bien?' bien':'');
@@ -498,13 +505,18 @@ function pintar(){
   if(pz.perfil!==perfilPintado)pintarPiezas();
 
   // ---- recalibrar ----
-  const c=e.calWeb, abierto=c.seg>0;
+  const c=e.calWeb, abierto=c.seg>0, n=Math.min(c.puntos,c.total-1);
   poner('calPermiso',abierto?'Recalibrar · permiso abierto '+Math.floor(c.seg/60)+':'+String(c.seg%60).padStart(2,'0'):'Recalibrar · permiso cerrado');
   $('calPermiso').style.color=abierto?'var(--verde)':'';
   $('btnCalCero').disabled=!abierto;
-  $('btnCalCarga').disabled=!(abierto&&c.paso===1);
-  $('btnCalCero').textContent=(c.paso===1?'✓ Cero tomado · repetir':'1 · Tomar el cero (plato vacío)');
-  $('calGramos').min=c.min;$('calGramos').max=e.cap;
+  $('btnCalPunto').disabled=!(abierto&&c.cero&&c.puntos<c.total);
+  $('btnCalCero').textContent=(c.cero?'✓ Cero tomado · repetir':'1 · Tomar el cero (plato vacío)');
+  poner('calEtiqueta','Peso '+(n+1)+' de '+c.total+' ('+(CAL_NOMBRES[n]||'')+'), en gramos');
+  $('btnCalPunto').textContent=(n+2)+' · Tomar el peso '+(n+1)+' de '+c.total+(n+1===c.total?' y guardar':'');
+  $('calGramos').min=c.min||1;$('calGramos').max=c.max||e.cap;
+  // Al cambiar de peso se propone el que sigue (sin pisar lo que se esta escribiendo).
+  if(c.puntos!==calPuntoPintado){calPuntoPintado=c.puntos;if(c.sig)$('calGramos').value=c.sig;}
+  poner('calAvance',abierto&&c.cero?(c.puntos?'Pesos tomados: '+c.puntos+' de '+c.total+'. Pon el siguiente, más pesado.':'Cero tomado. Pon el primer peso, el más ligero.'):'');
 
   pintarVivo();
 }
@@ -637,11 +649,15 @@ $('btnPzGuardar').onclick=()=>hacer(orden('/piezas/guardar',{nombre:$('pzNombre'
   if(j.ok){$('pzNombre').value='';cargarPiezas();}
 });
 
-$('btnCalCero').onclick=()=>hacer(ordenEstable('/calibrar/cero'),'Cero tomado. Ahora pon el peso conocido.');
-$('btnCalCarga').onclick=()=>{
-  const g=parseInt($('calGramos').value,10);
-  if(!(g>=e.calWeb.min&&g<=e.cap)){aviso('Usa un peso de '+e.calWeb.min+' a '+e.cap+' g.');return;}
-  hacer(ordenEstable('/calibrar/carga',{gramos:g}),'Calibración guardada.');
+$('btnCalCero').onclick=()=>hacer(ordenEstable('/calibrar/cero'),'Cero tomado. Ahora pon el primer peso (el más ligero).');
+$('btnCalPunto').onclick=()=>{
+  const c=e.calWeb, g=parseInt($('calGramos').value,10);
+  if(!(g>=c.min&&g<=c.max)){aviso('Usa un peso de '+c.min+' a '+c.max+' g.');return;}
+  hacer(ordenEstable('/calibrar/punto',{gramos:g})).then(j=>{
+    if(j.ok&&j.listo)aviso('Calibración guardada: '+j.factor+' cuentas por gramo, desvío máximo '+j.desvio+' g.',true);
+    else if(j.ok)aviso('Peso '+j.puntos+' tomado. Ahora pon el peso '+(j.puntos+1)+' de '+c.total+', más pesado.',true);
+    else if(j.motivo==='no_concuerda')aviso('El peso '+j.punto+' no concuerda con los otros dos (se aparta '+j.desvio+' g). Revisa cuánto pesa y repite desde ese peso.');
+  });
 };
 
 $('btnOlvidar').onclick=ev=>{

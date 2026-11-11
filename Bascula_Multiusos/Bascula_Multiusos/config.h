@@ -230,11 +230,31 @@ const float    AFINAR_ESCALON_DIV     = 20.0f;  // un objeto "cuenta" si mueve l
 const float    RUIDO_SIGMA_OBJETIVO_DIV = 0.3f; // ruido que se busca a la salida del filtro, en divisiones
 const float    RUIDO_PANTALLA_OBJETIVO_DIV = 0.15f;  // y en lo que se muestra, ya estable
 
-// Calibracion: la carga de prueba debe mover la lectura al menos esto,
-// y pesar al menos este porcentaje de la capacidad. Con pesos muy chicos
-// el error de la calibracion se multiplica en todo el rango.
-const int32_t  CAL_CUENTAS_MINIMAS   = 5000;
-const float    CAL_PESO_MIN_PORCIENTO = 5.0f;
+// ------------------ CALIBRACION (tres pesos) ------------------
+// Se calibra con el plato vacio y TRES pesos conocidos: bajo, medio y alto.
+// El factor (cuentas por gramo) sale de la recta de minimos cuadrados que
+// pasa por el cero medido; los pesos grandes pesan mas en la cuenta porque
+// son los de mejor senal. Con un solo peso, un error de la pesa de
+// referencia se copia en todo el rango y nadie lo nota; con tres, el que
+// no concuerda con los otros dos se delata y se pide repetirlo.
+const uint8_t  CAL_PUNTOS = 3;
+// Pesos que se proponen (porcentaje de la capacidad): 200, 500 y 1000 g
+// en la celda de 1 kg. Se pueden cambiar con las teclas o en la pagina;
+// la bascula recuerda los ultimos usados.
+const float    CAL_PROPUESTA_PORCIENTO[CAL_PUNTOS] = { 20.0f, 50.0f, 100.0f };
+// Cada peso debe ser mayor que el anterior, mover la lectura al menos
+// CAL_CUENTAS_MINIMAS respecto al cero y al peso anterior, el primero
+// pesar al menos CAL_PESO_MIN_PORCIENTO de la capacidad y el ultimo al
+// menos CAL_PESO_ALTO_PORCIENTO (calibrar solo con pesos chicos
+// multiplica el error en la parte alta del rango).
+const int32_t  CAL_CUENTAS_MINIMAS     = 5000;
+const float    CAL_PESO_MIN_PORCIENTO  = 5.0f;
+const float    CAL_PESO_ALTO_PORCIENTO = 50.0f;
+// Un peso "no concuerda" si, con el factor que marcan los otros, se desvia
+// mas de este porcentaje de su valor o de estas divisiones (lo que sea
+// mayor). Entonces no se guarda nada y se pide repetir ese peso.
+const float    CAL_DESVIO_MAX_PORCIENTO = 1.0f;
+const float    CAL_DESVIO_MAX_DIV       = 3.0f;
 
 // ------------------ CONTADOR DE PIEZAS ------------------
 
@@ -328,7 +348,7 @@ const uint32_t OTA_DESCARGA_ESPERA_MS = 15000;   // sin datos este tiempo: se co
 // ------------------ ATRIBUCION ------------------
 
 #define PROYECTO_NOMBRE   "Báscula Multiusos"
-#define PROYECTO_VERSION  "0.6"
+#define PROYECTO_VERSION  "0.7"
 #define PROYECTO_AUTOR    "Tostatronic"
 #define PROYECTO_ING      "Ing. Jorge Alvarado"
 #define PROYECTO_WEB      "tostatronic.com"
