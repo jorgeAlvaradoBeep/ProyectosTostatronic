@@ -2,7 +2,7 @@
 
 Proyecto de **Tostatronic** — Ing. Jorge Alvarado.
 
-Un aparatito de 57 × 96 × 41 mm que reproduce en bucle el video del ultrasonido en una
+Un aparatito de 59 × 96 × 41 mm que reproduce en bucle el video del ultrasonido en una
 pantalla redonda, con el sonido del corazón del bebé. Funciona con una batería 18650
 recargable y el video se sube **desde el celular**, sin cables ni programas: la ESP32
 crea su propia red WiFi y sirve una página que recorta y convierte el video ahí mismo.
@@ -26,7 +26,7 @@ crea su propia red WiFi y sirve una página que recorta y convierte el video ah�
 | Cargador TP4056 tipo C **con protección** | [BTTP4056TC](https://www.tostatronic.com/product/tp4056-tipo-c/) |
 | Holder 18650 de 1 pila para soldar | [Porta pilas 18650](https://www.tostatronic.com/product/porta-pilas-holder-para-bateria-18650-en-serie-p-soldar/) |
 | Batería 18650 | — |
-| Micro switch deslizable SS12D00G4 | [BTSWT3PSS12](https://www.tostatronic.com/product/micro-switch-3-posiciones-ss12d00g4/) |
+| Switch balancín On/Off 117S de 15 × 21 mm | [BTSW117S](https://www.tostatronic.com/product/switch-on-off-117s-1521mm-250vac-6a/) |
 | 2 resistencias de 100 kΩ (medidor de batería, opcional) | — |
 | Tornillos M3 autorroscantes: 3 de 10 mm (tapa), 2 de 8 mm (puente), 2 de 6 mm (holder) | — |
 
@@ -139,9 +139,9 @@ En [`carcasa/`](carcasa/). Tres piezas en PLA, sin soportes:
   caen en dos canales por donde salen los cables) y, a la derecha, TP4056, ESP32-C3 y
   amplificador en sus cunas, con cinta doble cara. Los dos USB-C salen por el costado derecho:
   abajo el de **carga**, arriba el de la ESP32.
-- **Switch:** en la pared de arriba, pegado por dentro.
+- **Switch:** balancín 117S en la pared de arriba; entra a presión por fuera en un corte de 19.2 × 13 mm.
 - La ESP32-C3 va **sin pines soldados** en la versión final (cables directos).
-- Todo el interior es la caja acústica de la bocina: quedan unos 110 cm³ de aire. No lo
+- Todo el interior es la caja acústica de la bocina: quedan unos 120 cm³ de aire. No lo
   rellenes y, si quieres un sonido más redondo, pega un poco de guata detrás de la batería.
 
 ### Cambiar medidas
@@ -152,16 +152,18 @@ Todas las medidas están al principio del script.
 
 ## 6. Mide antes de imprimir
 
-Las medidas del holder, bocina, amplificador, TP4056 y ESP32 salen de las fichas de
-tostatronic.com. Estas otras son las típicas del módulo y **hay que confirmarlas con vernier**:
+El marco del holder 18650 (76.0 × 20.8 mm), la tarjeta del TP4056 (27.9 × 17.2 mm) y el corte
+del switch 117S salen de la carcasa de la báscula, donde ya se probaron impresos. Bocina,
+amplificador y ESP32 salen de las fichas de tostatronic.com. Estas otras son las típicas del
+módulo y **hay que confirmarlas con vernier**:
 
 | Medida | Valor usado | En el script |
 |---|---|---|
 | Alto total de la bocina | 6.0 mm | `BOCINA_H` |
+| Alto del holder 18650 | 21.3 mm | `HOLDER` |
 | Tarjeta redonda de la pantalla | hasta Ø 38 mm | `LCD_PCB_D` |
 | Grueso de la pantalla (vidrio + tarjeta) | 5.2 mm | `LCD_GRUESO` |
 | Pestaña de los pines de la pantalla | 19 mm de ancho, sube 26 mm desde el centro | `LCD_OREJA` |
-| Cuerpo y palanca del switch | 8.8 × 4.6 mm, ranura 5.4 × 2.4 mm | `SW_CUERPO`, `SW_RANURA` |
 
 Si la imagen sale girada en la carcasa, cambia `TFT_ROTACION` en `config.h`.
 

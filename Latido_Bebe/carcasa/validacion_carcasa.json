@@ -1,6 +1,6 @@
 {
  "exterior_mm": [
-  56.8,
+  59.3,
   95.8,
   41.0
  ],
@@ -8,9 +8,9 @@
   "Latido_Frente": {
    "cerrada": true,
    "cuerpos": 1,
-   "volumen_cm3": 39.3,
+   "volumen_cm3": 39.8,
    "medidas_mm": [
-    56.8,
+    59.3,
     95.8,
     38.0
    ]
@@ -18,9 +18,9 @@
   "Latido_Tapa": {
    "cerrada": true,
    "cuerpos": 1,
-   "volumen_cm3": 20.9,
+   "volumen_cm3": 21.6,
    "medidas_mm": [
-    56.8,
+    59.3,
     95.8,
     9.0
    ]
@@ -30,13 +30,13 @@
    "cuerpos": 1,
    "volumen_cm3": 1.2,
    "medidas_mm": [
-    51.5,
+    50.5,
     8.0,
     3.0
    ]
   }
  },
  "choques_mm3": {},
- "aire_para_la_bocina_cm3": 114,
+ "aire_para_la_bocina_cm3": 120,
  "rejilla_barrenos": 71
 }

@@ -29,8 +29,9 @@ M = md.Manifold
 #  MEDIDAS DE LAS PIEZAS  (de las fichas de tostatronic.com; las marcadas (*) son
 #  tipicas del modulo: CONFIRMALAS CON VERNIER antes de imprimir)
 # ============================================================
-HOLDER = (20.9, 77.7, 21.3)    # holder 18650 de 1 pila p/ soldar: ancho, largo, alto
-HOLDER_BARRENO = (10.68, 55.61)  # primer barreno de 3.2 mm desde la orilla, y separacion entre los dos
+HOLDER = (20.6, 75.8, 21.3)    # holder 18650 de 1 pila: ancho y largo del marco ya probado en la bascula (76.0 x 20.8 con
+                               # 0.1 de holgura por lado); (*) el alto es el de la ficha
+HOLDER_BARRENO = (10.68, 55.61)  # ficha: primer barreno de 3.2 mm desde la orilla, y separacion entre los dos
 HOLDER_PIN = 2.4               # las terminales salen a 2.4 mm de cada orilla y bajan 3.3 mm
 BOCINA_D = 40.0                # bocina 8 ohms 0.5 W
 BOCINA_H = 6.0                 # (*) alto total de la bocina
@@ -41,10 +42,11 @@ LCD_GRUESO = 5.2               # (*) del vidrio a la espalda de la tarjeta
 LCD_OREJA = (19.0, 26.0)       # (*) pestana de los pines: ancho, y cuanto sube desde el centro
 LCD_PINES = (20.5, 8.5)        # (*) fila de pines: distancia al centro, y cuanto salen hacia atras
 AMP = (18.0, 19.0)             # MAX98357A
-TP4056 = (26.2, 17.6)          # TP4056 tipo C con proteccion (largo con el USB hacia la pared)
+TP4056 = (27.9, 17.2)          # TP4056 tipo C: tarjeta medida en el encapsulado de la bascula (cavidad probada 28.3 x 17.6)
 C3 = (22.5, 18.0)              # ESP32-C3 Super Mini, SIN pines soldados (largo con el USB hacia la pared)
-SW_CUERPO = (8.8, 4.6)         # micro switch deslizable SS12D00G4: cuerpo
-SW_RANURA = (5.4, 2.4)         # ranura para la palanca
+SW_CORTE = (19.4, 13.2)        # switch balancin 117S (15 x 21): corte del panel, para pared de 0.8 a 3.0 mm
+SW_MARCO = (21.0, 15.0)        # marco que queda por fuera
+SW_FONDO = (13.5, 20.5)        # cuerpo detras del marco, y total hasta la punta de las terminales
 
 # ============================================================
 #  CAJA
@@ -52,7 +54,7 @@ SW_RANURA = (5.4, 2.4)         # ranura para la palanca
 PARED = 2.4
 FRENTE = 2.4
 TAPA = 3.0
-IN_W, IN_H = 52.0, 91.0        # hueco interior
+IN_W, IN_H = 54.5, 91.0        # hueco interior
 FONDO = 41.0                   # fondo total con la tapa puesta
 R_EXT = 4.4                    # radio de las esquinas
 HOLG = 0.25                    # holgura de ajuste
@@ -65,21 +67,21 @@ Z_TAPA = FONDO - TAPA          # cara interior de la tapa
 # --- frente
 BOC = (IN_W / 2, 23.5)                     # centro de la bocina (ix, iy)
 LCD = (IN_W / 2, IN_H - LCD_OREJA[1] - 1)  # centro de la pantalla
-PUENTE_X = 22.5                            # postes del puente a cada lado de la pantalla
+PUENTE_X = 22.0                            # postes del puente a cada lado de la pantalla
 PUENTE = (2 * PUENTE_X + 6.5, 8.0, 3.0)    # largo, ancho, grueso
 
 # --- tapa (posiciones interiores, vistas de frente)
 PEDESTAL = 2.0                             # el holder va levantado para librar sus terminales
 HOLDER_XY = (2.2, 2.5)                     # esquina inferior izquierda del holder
 TP_Y, C3_Y, AMP_Y = 9.0, 33.0, 57.0        # columna derecha, de abajo hacia arriba
-AMP_X = 30.0
+AMP_X = 32.0
 CUNA = (1.2, 2.6)                          # paredes de las cunas: grueso, alto
 PISO_CUNA = 1.0                            # costillas donde asienta cada tarjeta
 USB = (12.6, 7.0)                          # ventana del USB-C: ancho (en Y), alto (en Z)
 USB_Z = Z_TAPA - PISO_CUNA - 1.6 - 1.6     # centro del conector
 POSTES = [(3.4, IN_H - 3.4), (IN_W - 3.4, IN_H - 3.4), (IN_W - 3.4, 3.4)]   # tornillos de la tapa
 R_POSTE = 3.2
-SW = (41.0, 24.0)                          # switch en la pared de arriba: ix, z
+SW = (36.0, 24.5)                          # switch en la pared de arriba: centro (ix, z)
 
 
 # ============================================================
@@ -142,9 +144,8 @@ def frente():
     for y0, ancho in ((TP_Y, TP4056[1]), (C3_Y, C3[1])):
         yc = y0 + ancho / 2
         s -= caja(IN_W - 0.5, IN_W + PARED + 1, yc - USB[0] / 2, yc + USB[0] / 2, USB_Z - USB[1] / 2, FONDO)
-    # switch deslizable (pared de arriba): cavidad por dentro y ranura para la palanca
-    s -= caja(SW[0] - SW_CUERPO[0] / 2, SW[0] + SW_CUERPO[0] / 2, IN_H - 0.5, IN_H + PARED - 1.0, SW[1] - SW_CUERPO[1] / 2, SW[1] + SW_CUERPO[1] / 2)
-    s -= caja(SW[0] - SW_RANURA[0] / 2, SW[0] + SW_RANURA[0] / 2, IN_H - 0.5, IN_H + PARED + 1, SW[1] - SW_RANURA[1] / 2, SW[1] + SW_RANURA[1] / 2)
+    # switch balancin 117S (pared de arriba): entra a presion por fuera, lo largo a lo ancho del aparato
+    s -= caja(SW[0] - SW_CORTE[0] / 2, SW[0] + SW_CORTE[0] / 2, IN_H - 0.5, IN_H + PARED + 1, SW[1] - SW_CORTE[1] / 2, SW[1] + SW_CORTE[1] / 2)
     return s
 
 
@@ -177,7 +178,6 @@ def tapa():
         c -= caja(px - R_POSTE - 0.5, px + R_POSTE + 0.5, 0 if py < IN_H / 2 else py, py if py < IN_H / 2 else IN_H, 0, FONDO)
     c -= caja(IN_W - 3, IN_W, TP_Y - 2, TP_Y + TP4056[1] + 2, 0, FONDO)          # frente a los USB no hay ceja
     c -= caja(IN_W - 3, IN_W, C3_Y - 2, C3_Y + C3[1] + 2, 0, FONDO)
-    c -= caja(SW[0] - 8, SW[0] + 8, IN_H - 3, IN_H, 0, FONDO)                    # ni frente al switch
     t += c
     # pedestal del holder, con dos canales para sus terminales y los cables
     hx, hy = HOLDER_XY
@@ -185,7 +185,7 @@ def tapa():
     t += caja(hx + HOLDER[0] + HOLG, hx + HOLDER[0] + HOLG + 1.2, hy + 12, hy + HOLDER[1] - 12, Z_TAPA - PEDESTAL - 4, Z_TAPA + 0.1)   # guia lateral
     for y in (hy + HOLDER_PIN, hy + HOLDER[1] - HOLDER_PIN):
         t -= caja(hx + 3, hx + HOLDER[0] + 3, y - 2.5, y + 2.5, Z_TAPA - PEDESTAL - 1, Z_TAPA + 1.8)
-    for y in (hy + HOLDER_BARRENO[0], hy + HOLDER_BARRENO[0] + HOLDER_BARRENO[1]):
+    for y in (hy + HOLDER[1] / 2, hy + HOLDER[1] / 2 - HOLDER_BARRENO[1] / 2, hy + HOLDER[1] / 2 + HOLDER_BARRENO[1] / 2):   # centro, o los dos de la ficha
         t -= cil(hx + HOLDER[0] / 2, y, PILOTO_M3 / 2, Z_TAPA - PEDESTAL - 1, FONDO - 0.8)
     # cunas de las tarjetas
     t += cuna(IN_W - TP4056[0], TP_Y, TP4056[0], TP4056[1], True)
@@ -223,7 +223,8 @@ def componentes():
         'tp4056': caja(IN_W - TP4056[0], IN_W, TP_Y, TP_Y + TP4056[1], zc - 1.6 - 3.3, zc),
         'c3': caja(IN_W - C3[0], IN_W, C3_Y, C3_Y + C3[1], zc - 1.6 - 3.3, zc),
         'amp': caja(AMP_X, AMP_X + AMP[0], AMP_Y, AMP_Y + AMP[1], zc - 1.6 - 3.0, zc),
-        'switch': caja(SW[0] - 4.3, SW[0] + 4.3, IN_H - 6.5, IN_H + 1.3, SW[1] - 2.2, SW[1] + 2.2),
+        'switch': caja(SW[0] - SW_CORTE[0] / 2, SW[0] + SW_CORTE[0] / 2, IN_H + PARED - SW_FONDO[0], IN_H + PARED, SW[1] - SW_CORTE[1] / 2, SW[1] + SW_CORTE[1] / 2)
+                  + caja(SW[0] - 6, SW[0] + 6, IN_H + PARED - SW_FONDO[1] + 2, IN_H + PARED - SW_FONDO[0], SW[1] - 3, SW[1] + 3),
         'tornillos_puente': cil(LCD[0] - PUENTE_X, LCD[1], 3.0, FRENTE + LCD_GRUESO + PUENTE[2], FRENTE + LCD_GRUESO + PUENTE[2] + 2.2)
                             + cil(LCD[0] + PUENTE_X, LCD[1], 3.0, FRENTE + LCD_GRUESO + PUENTE[2], FRENTE + LCD_GRUESO + PUENTE[2] + 2.2),
     }
@@ -262,7 +263,8 @@ def vistas(comp):
     a.add_patch(Circle((esp(P + BOC[0]), P + BOC[1]), BOCINA_D / 2, fc='#ccc', ec='k'))
     for px, py in POSTES:
         a.add_patch(Circle((esp(P + px), P + py), R_POSTE, fc='#888', ec='k'))
-    a.add_patch(Rectangle((esp(P + SW[0] + 4.4), P + IN_H - 6), 8.8, 6, fc='#6c6', ec='k'))
+    a.add_patch(Rectangle((esp(P + SW[0] + SW_CORTE[0] / 2), P + IN_H + PARED - SW_FONDO[0]), SW_CORTE[0], SW_FONDO[0], fc='#6c6', ec='k', alpha=.8))
+    a.text(esp(P + SW[0]), P + IN_H - 4, 'switch 117S', ha='center', fontsize=7)
     a.text(esp(P + LCD[0]), P + LCD[1] + 8, 'pantalla', ha='center'); a.text(esp(P + BOC[0]), P + BOC[1], 'bocina', ha='center')
     a = ax[2]
     a.add_patch(Rectangle((P, P), IN_W, IN_H, fill=False, ec='gray'))
@@ -282,7 +284,7 @@ def vistas(comp):
     a.set_title('Corte lateral: frente a la izquierda, tapa a la derecha')
     a.add_patch(Rectangle((0, 0), FONDO, H, fill=False, lw=1.6)); a.add_patch(Rectangle((Z_TAPA, 0), TAPA, H, fc='#bbb'))
     a.add_patch(Rectangle((0, 0), FRENTE, H, fc='#bbb'))
-    for n, c in (('holder', '#fd8'), ('bocina', '#ccc'), ('pantalla', '#9cf'), ('c3', '#8d8'), ('tp4056', '#8bf'), ('amp', '#c9f')):
+    for n, c in (('holder', '#fd8'), ('bocina', '#ccc'), ('pantalla', '#9cf'), ('c3', '#8d8'), ('tp4056', '#8bf'), ('amp', '#c9f'), ('switch', '#6c6')):
         b = malla(comp[n]).bounds
         a.add_patch(Rectangle((b[0][2], b[0][1]), b[1][2] - b[0][2], b[1][1] - b[0][1], fc=c, ec='k', alpha=.75))
         a.text((b[0][2] + b[1][2]) / 2, (b[0][1] + b[1][1]) / 2, n, ha='center', va='center', fontsize=8)
