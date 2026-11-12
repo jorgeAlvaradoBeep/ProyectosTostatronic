@@ -1,0 +1,296 @@
+<title>Ensamble de Latido</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: banco de trabajo. El visor 3D manda; a su lado la lista de pasos, abajo la linea de tiempo. */
+:root {
+  --bg: #faf5f6; --panel: #ffffff; --stage: #f1e6e9; --ink: #2b1a22; --muted: #7a6470;
+  --line: #e4d3d9; --accent: #c8334f; --accent-ink: #ffffff; --soft: #f7dfe5;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #17101a; --panel: #211823; --stage: #2a1f2c; --ink: #f3e7ec; --muted: #a8929e;
+  --line: #3a2b3b; --accent: #ff6f8b; --accent-ink: #25101a; --soft: #3d2231; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #17101a; --panel: #211823; --stage: #2a1f2c; --ink: #f3e7ec; --muted: #a8929e;
+  --line: #3a2b3b; --accent: #ff6f8b; --accent-ink: #25101a; --soft: #3d2231; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5 }
+.wrap { max-width: 1280px; margin: 0 auto; padding-block: 20px 28px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 16px }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px }
+h1 { font-family: var(--display); font-weight: 700; font-size: 1.6rem; margin: 0; letter-spacing: -0.01em }
+header p { margin: 0; color: var(--muted) }
+.banco { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start }
+.visor { display: flex; flex-direction: column; gap: 12px; min-width: 0 }
+.escena { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  height: clamp(340px, 64vh, 720px) }
+.escena canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab }
+.escena canvas:active { cursor: grabbing }
+.ayuda { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); pointer-events: none }
+.actual { position: absolute; left: 12px; top: 12px; right: 12px; pointer-events: none; display: flex; flex-direction: column; gap: 2px }
+.actual .num { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 600 }
+.actual .tit { font-family: var(--display); font-weight: 700; font-size: 1.25rem }
+.mandos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px }
+button { font: 500 14px var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 14px; cursor: pointer }
+button:hover { border-color: var(--accent) }
+button:focus-visible, input:focus-visible, .pasos li:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+button.principal { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); min-width: 104px }
+input[type=range] { flex: 1 1 200px; min-width: 0; accent-color: var(--accent) }
+label.interr { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; user-select: none }
+label.interr input { accent-color: var(--accent); width: 16px; height: 16px }
+.nota { margin: 0; padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: 75ch; min-height: 5.6em }
+.lista { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-width: 0 }
+.lista h2 { font: 600 12px var(--body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 6px 8px 8px }
+.pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: clamp(300px, 70vh, 800px); overflow-y: auto }
+.pasos li { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 7px; cursor: pointer }
+.pasos li:hover { background: var(--soft) }
+.pasos .n { font: 500 13px var(--display); font-variant-numeric: tabular-nums; width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center; border: 1px solid var(--line); color: var(--muted) }
+.pasos li.hecho .n { background: var(--soft); border-color: var(--soft); color: var(--ink) }
+.pasos li.activo { background: var(--soft) }
+.pasos li.activo .n { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.pasos li.activo .t { font-weight: 600 }
+.pasos .grupo { font-size: 11px; color: var(--muted); display: block; line-height: 1.2 }
+.error { padding: 16px; color: var(--muted) }
+@media (max-width: 860px) {
+  .banco { grid-template-columns: minmax(0, 1fr) }
+  .escena { height: clamp(300px, 52vh, 520px) }
+  .pasos { max-height: none }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Ensamble de Latido</h1>
+    <p>Carcasa de 59.3 × 95.8 × 41 mm, con la geometría de <code>generar_carcasa.py</code></p>
+  </header>
+  <div class="banco">
+    <div class="visor">
+      <div class="escena" id="escena">
+        <canvas id="lienzo" aria-label="Vista 3D del ensamble"></canvas>
+        <div class="actual"><span class="num" id="num"></span><span class="tit" id="tit"></span></div>
+        <div class="ayuda">Arrastra para girar · rueda o pellizco para acercar · clic derecho para mover</div>
+      </div>
+      <div class="mandos">
+        <button id="atras" type="button">← Anterior</button>
+        <button id="play" type="button" class="principal">▶ Reproducir</button>
+        <button id="sig" type="button">Siguiente →</button>
+        <input id="tiempo" type="range" min="0" max="1" step="0.001" value="0" aria-label="Avance del ensamble">
+        <label class="interr"><input id="rayos" type="checkbox"> Ver por dentro</label>
+      </div>
+      <p class="nota" id="nota"></p>
+    </div>
+    <aside class="lista">
+      <h2>Pasos</h2>
+      <ol class="pasos" id="pasos"></ol>
+    </aside>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+const D = /*DATOS*/null;
+const $ = id => document.getElementById(id);
+const N = D.pasos.length;
+const lienzo = $('lienzo'), escenaEl = $('escena');
+if (!window.THREE) { escenaEl.innerHTML = '<p class="error">No se pudo cargar el visor 3D (three.js). Revisa tu conexión a internet y recarga.</p>'; return; }
+
+// ---------- lista de pasos
+const GRUPO = ['Impresión', 'Frente', 'Frente', 'Frente', 'Frente', 'Frente', 'Tapa', 'Tapa', 'Tapa', 'Tapa', 'Tapa', 'Ambas mitades', 'Tapa', 'Cierre', 'Cierre', 'Listo'];
+D.pasos.forEach((p, k) => {
+  const li = document.createElement('li');
+  li.tabIndex = 0; li.setAttribute('role', 'button');
+  li.innerHTML = '<span class="n">' + (k + 1) + '</span><span class="t">' + p.t + '<span class="grupo">' + GRUPO[k] + '</span></span>';
+  const ir = () => animarA(k + 1, k);
+  li.addEventListener('click', ir);
+  li.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ir(); } });
+  $('pasos').appendChild(li);
+});
+$('tiempo').max = N;
+
+// ---------- escena
+const renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 5, 3000);
+camera.up.set(0, 0, 1);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a80, 0.75));
+const sol = new THREE.DirectionalLight(0xffffff, 0.7); scene.add(sol);
+const relleno = new THREE.DirectionalLight(0xffffff, 0.25); relleno.position.set(-200, 150, 80); scene.add(relleno);
+
+const raiz = new THREE.Group(); scene.add(raiz);                 // todo el aparato (se para al final)
+const tapaPos = new THREE.Group(), tapaGiro = new THREE.Group(), tapaCont = new THREE.Group();
+raiz.add(tapaPos); tapaPos.add(tapaGiro); tapaGiro.add(tapaCont);
+const PIV = new THREE.Vector3(D.W / 2, 0, D.FONDO / 2);
+tapaGiro.position.copy(PIV); tapaCont.position.copy(PIV).multiplyScalar(-1);
+
+function b64(s, Tipo) {
+  const bin = atob(s), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Tipo(u8.buffer);
+}
+const piezas = D.piezas.map(p => {
+  const obj = new THREE.Group(); obj.matrixAutoUpdate = false;
+  const mats = [];
+  p.mallas.forEach(m => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(b64(m.v, Float32Array), 3));
+    geo.setIndex(new THREE.BufferAttribute(b64(m.i, Uint32Array), 1));
+    const mat = new THREE.MeshStandardMaterial({ color: m.color, flatShading: true, metalness: m.metal ? 0.55 : 0.0, roughness: m.metal ? 0.38 : 0.78 });
+    mats.push(mat);
+    obj.add(new THREE.Mesh(geo, mat));
+  });
+  (p.grupo === 'tapa' ? tapaCont : raiz).add(obj);
+  return { p, obj, mats };
+});
+
+// ---------- camara orbital
+const VISTAS = {
+  frente: { x: D.W / 2, y: D.H / 2, z: 12, az: 0.55, el: 0.72, d: 290 },
+  tapa:   { x: -25 - D.W / 2, y: D.H / 2, z: 12, az: -0.55, el: 0.72, d: 290 },
+  ambos:  { x: -12, y: D.H / 2, z: 10, az: 0.25, el: 0.8, d: 400 },
+  cierre: { x: -5, y: D.H / 2, z: 40, az: 0.3, el: 0.5, d: 460 },
+  atras:  { x: D.W / 2, y: D.H / 2, z: 30, az: 0.5, el: 0.8, d: 300 },
+  final:  { x: D.W / 2, y: -D.FONDO / 2, z: D.H / 2, az: Math.PI - 0.6, el: 0.2, d: 330 },
+};
+const cam = Object.assign({}, VISTAS.ambos);
+let camMeta = null;
+function ponerCamara() {
+  const ce = Math.cos(cam.el);
+  camera.position.set(cam.x + cam.d * ce * Math.sin(cam.az), cam.y - cam.d * ce * Math.cos(cam.az), cam.z + cam.d * Math.sin(cam.el));
+  camera.lookAt(cam.x, cam.y, cam.z);
+  sol.position.copy(camera.position).add(new THREE.Vector3(60, 0, 160));
+}
+const dedos = new Map(); let pellizco = 0;
+lienzo.addEventListener('contextmenu', e => e.preventDefault());
+lienzo.addEventListener('pointerdown', e => { lienzo.setPointerCapture(e.pointerId); dedos.set(e.pointerId, { x: e.clientX, y: e.clientY, b: e.button }); camMeta = null; pellizco = 0; });
+lienzo.addEventListener('pointermove', e => {
+  const a = dedos.get(e.pointerId); if (!a) return;
+  const dx = e.clientX - a.x, dy = e.clientY - a.y; a.x = e.clientX; a.y = e.clientY;
+  if (dedos.size === 2) {
+    const [p, q] = [...dedos.values()], sep = Math.hypot(p.x - q.x, p.y - q.y);
+    if (pellizco) cam.d = Math.min(900, Math.max(90, cam.d * pellizco / sep));
+    pellizco = sep;
+  } else if (a.b === 2 || e.shiftKey) {
+    const k = cam.d * 0.0016, sa = Math.sin(cam.az), ca = Math.cos(cam.az);
+    cam.x -= dx * k * ca; cam.y -= dx * k * sa; cam.z += dy * k;
+  } else {
+    cam.az -= dx * 0.008; cam.el = Math.min(1.5, Math.max(-1.2, cam.el + dy * 0.008));
+  }
+  pintar();
+});
+const soltar = e => { dedos.delete(e.pointerId); pellizco = 0; };
+lienzo.addEventListener('pointerup', soltar); lienzo.addEventListener('pointercancel', soltar);
+lienzo.addEventListener('wheel', e => { e.preventDefault(); camMeta = null; cam.d = Math.min(900, Math.max(90, cam.d * Math.exp(e.deltaY * 0.001))); pintar(); }, { passive: false });
+
+// ---------- estado en funcion del tiempo t (0..N): el paso k ocurre entre t = k y t = k + 1
+const suave = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+const m1 = new THREE.Matrix4(), m2 = new THREE.Matrix4(), eje = new THREE.Vector3();
+function ruta(r, q) {            // r: puntos [dx, dy, dz, ang]; el ultimo implicito es [0,0,0,0]
+  const pts = r.concat([[0, 0, 0, 0]]), n = pts.length - 1;
+  const f = Math.min(q * n, n - 1e-9), i = Math.floor(f), u = f - i, a = pts[i], b = pts[i + 1];
+  return a.map((v, j) => v + (b[j] - v) * u);
+}
+let t = 0, pasoVisto = -1, rayosAuto = false;
+function aplicar() {
+  const paso = Math.max(0, Math.min(N - 1, Math.ceil(t) - 1));
+  const enCurso = Math.min(N - 1, Math.floor(t));
+  const rayos = $('rayos').checked || !!D.pasos[paso].rayos;
+  for (const { p, obj, mats } of piezas) {
+    obj.visible = t >= p.paso;
+    if (!obj.visible) continue;
+    const q = suave((t - p.paso - p.ini) / (p.fin - p.ini));
+    if (p.ruta.length && q < 1) {
+      const [dx, dy, dz, ang] = ruta(p.ruta, q);
+      m1.makeTranslation(dx, dy, dz);
+      if (p.pivote && ang) {
+        m2.makeTranslation(p.pivote[0], p.pivote[1], p.pivote[2]); m1.multiply(m2);
+        m2.makeRotationAxis(eje.fromArray(p.eje), ang * Math.PI / 180); m1.multiply(m2);
+        m2.makeTranslation(-p.pivote[0], -p.pivote[1], -p.pivote[2]); m1.multiply(m2);
+      }
+      obj.matrix.copy(m1);
+    } else obj.matrix.identity();
+    const resalta = p.paso === enCurso && t < N && q < 1 && !p.carcasa;
+    for (const mat of mats) {
+      mat.emissive.setHex(resalta ? 0x5a1522 : 0x000000);
+      if (p.carcasa) { mat.transparent = rayos; mat.opacity = rayos ? 0.28 : 1; mat.depthWrite = !rayos; }
+    }
+  }
+  // la tapa: abierta a un lado y boca arriba hasta el paso de cierre
+  const c = suave((t - D.PASO_CIERRE) / 0.9), abierta = -(D.W + 25);
+  let dx = abierta, dz = 0, ang = Math.PI;
+  if (c > 0) {
+    if (c < 0.3) { dz = 75 * suave(c / 0.3); }
+    else if (c < 0.75) { const u = suave((c - 0.3) / 0.45); dz = 75; dx = abierta * (1 - u); ang = Math.PI * (1 - u); }
+    else { const u = suave((c - 0.75) / 0.25); dx = 0; ang = 0; dz = 75 * (1 - u); }
+  }
+  tapaPos.position.set(dx, 0, dz); tapaGiro.rotation.y = ang;
+  raiz.rotation.x = Math.PI / 2 * suave((t - D.PASO_FINAL) / 0.8);
+
+  if (paso !== pasoVisto) {
+    pasoVisto = paso;
+    $('num').textContent = 'Paso ' + (paso + 1) + ' de ' + N;
+    $('tit').textContent = D.pasos[paso].t;
+    $('nota').textContent = D.pasos[paso].d;
+    [...$('pasos').children].forEach((li, k) => { li.classList.toggle('activo', k === paso); li.classList.toggle('hecho', k < paso); });
+    const act = $('pasos').children[paso], cont = $('pasos');
+    if (cont.scrollHeight > cont.clientHeight) cont.scrollTop = act.offsetTop - cont.offsetTop - cont.clientHeight / 2 + 20;
+    camMeta = Object.assign({}, VISTAS[D.pasos[paso].vista]);
+  }
+  $('tiempo').value = t;
+}
+function pintar() { ponerCamara(); renderer.render(scene, camera); }
+
+// ---------- reproduccion
+let meta = null, corriendo = false, antes = 0, pedido = 0;
+const SEG_POR_PASO = 2.6;
+function cuadro(ahora) {
+  pedido = 0;
+  const dt = Math.min(0.05, (ahora - antes) / 1000); antes = ahora;
+  let sigue = false;
+  if (meta !== null) {
+    t = Math.min(meta, t + dt / SEG_POR_PASO);
+    if (t >= meta) { if (corriendo && meta < N) meta = Math.min(N, meta + 1); else { meta = null; corriendo = false; boton(); } }
+    sigue = meta !== null;
+  }
+  aplicar();
+  if (camMeta) {
+    let lejos = 0;
+    for (const k in camMeta) { const d = camMeta[k] - cam[k]; cam[k] += d * Math.min(1, dt * 3.2); lejos = Math.max(lejos, Math.abs(d) / (k === 'az' || k === 'el' ? 0.002 : 0.2)); }
+    if (lejos < 1) camMeta = null; else sigue = true;
+  }
+  pintar();
+  if (sigue) pedir();
+}
+function pedir() { if (!pedido) { antes = performance.now(); pedido = requestAnimationFrame(cuadro); } }
+function boton() { $('play').textContent = corriendo ? '❚❚ Pausa' : (t >= N ? '↺ Repetir' : '▶ Reproducir'); }
+function animarA(hasta, desde) { corriendo = false; if (desde !== undefined) t = desde; meta = hasta; boton(); pedir(); }
+$('play').addEventListener('click', () => {
+  if (corriendo) { corriendo = false; meta = null; }
+  else { if (t >= N) t = 0; corriendo = true; meta = Math.min(N, Math.floor(t + 1e-6) + 1); }
+  boton(); pedir();
+});
+$('sig').addEventListener('click', () => { const k = Math.min(N - 1, Math.floor(t + 1e-6)); animarA(k + 1, t > k ? undefined : k); });
+$('atras').addEventListener('click', () => { corriendo = false; meta = null; t = Math.max(0, Math.ceil(t - 1e-6) - 1); boton(); pedir(); });
+$('tiempo').addEventListener('input', e => { corriendo = false; meta = null; t = +e.target.value; boton(); pedir(); });
+$('rayos').addEventListener('change', pedir);
+
+function medir() {
+  const w = escenaEl.clientWidth, h = escenaEl.clientHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); pedir();
+}
+new ResizeObserver(medir).observe(escenaEl);
+
+// #paso-8 abre con ese paso ya terminado
+const mh = /^#paso-(\d+)$/.exec(location.hash);
+if (mh) t = Math.max(0, Math.min(N, +mh[1]));
+aplicar(); if (camMeta) { Object.assign(cam, camMeta); camMeta = null; }
+medir(); boton();
+})();
+</script>
